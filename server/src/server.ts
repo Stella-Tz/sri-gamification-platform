@@ -5,6 +5,7 @@ import cors from "cors";
 import session from "express-session";
 
 import authRoutes from "./routes/authRoutes.js";
+import courseRoutes from "./routes/courseRoutes.js";
 
 
 const app = express();
@@ -40,6 +41,10 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 
+app.use(
+"/api/course",
+  courseRoutes,
+);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

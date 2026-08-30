@@ -1,36 +1,273 @@
+@baseUrl = http://localhost:5000/api
+
+@email = course-backend-test@example.com
+@password = TestPassword123!
+
+@firstLessonId = what-is-the-smart-readiness-indicator
+@firstQuizId = quiz-what-is-the-smart-readiness-indicator
+
+@secondLessonId = smart-readiness-in-buildings
+@secondQuizId = quiz-smart-readiness-in-buildings
+
+@section1FinalTestId = final-test-introduction-to-sri
+
+
+############################################################
+# HEALTH
+############################################################
+
 ### Health check
-GET http://localhost:5000/api/health
+GET {{baseUrl}}/health
 
 
+############################################################
+# AUTHENTICATION
+############################################################
 
-### Register user
-POST http://localhost:5000/api/auth/register
+### Register test user
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "email": "maria@test.com",
-  "password": "123456",
-  "firstName": "Maria",
-  "fullName": "Maria K."
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "firstName": "Course",
+  "lastName": "Tester"
 }
 
 
-
-### Login user
-POST http://localhost:5000/api/auth/login
+### Login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "maria@test.com",
-  "password": "123456"
+  "email": "{{email}}",
+  "password": "{{password}}"
 }
 
 
-### Get current user
-GET http://localhost:5000/api/auth/me
+### Current authenticated user
+GET {{baseUrl}}/auth/me
 
 
-### Get course progress
-GET http://localhost:5000/api/course/progress
+### Logout
+POST {{baseUrl}}/auth/logout
 
-### Reset progress
+
+############################################################
+# COURSE PROGRESS
+############################################################
+
+### Get current Course progress
+GET {{baseUrl}}/course/progress
+
+
+### Reset Course progress
+POST {{baseUrl}}/course/progress/reset
+
+
+############################################################
+# ACCESS / LOCKING TESTS
+############################################################
+
+### Try to complete a LOCKED lesson
+# Run this BEFORE completing the first lesson.
+# Expected: 400 - "This course step is not available yet."
+POST {{baseUrl}}/course/lessons/{{secondLessonId}}/complete
+
+
+############################################################
+# FIRST LESSON
+############################################################
+
+### Complete first lesson
+POST {{baseUrl}}/course/lessons/{{firstLessonId}}/complete
+
+
+### Check progress after first lesson
+GET {{baseUrl}}/course/progress
+
+
+############################################################
+# FIRST LESSON QUIZ
+############################################################
+
+### Get first lesson quiz
+# IMPORTANT:
+# Response must contain prompt + options.
+# It must NOT contain correctOptionKey / correctOptionId
+# or explanation before an answer is submitted.
+GET {{baseUrl}}/course/quizzes/{{firstQuizId}}
+
+
+### Submit WRONG answer to question 1
+# Expected:
+# correct = false
+# correctOptionId = option-b
+# explanation is returned
+POST {{baseUrl}}/course/quizzes/{{firstQuizId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-01",
+  "selectedOptionId": "option-a"
+}
+
+
+### Submit CORRECT answer to question 1
+# Expected:
+# correct = true
+# correctOptionId = option-b
+POST {{baseUrl}}/course/quizzes/{{firstQuizId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-01",
+  "selectedOptionId": "option-b"
+}
+
+
+### Complete first lesson quiz
+# All questions must be represented.
+# Correctness does not determine completion.
+POST {{baseUrl}}/course/quizzes/{{firstQuizId}}/complete
+Content-Type: application/json
+
+{
+  "answers": [
+    {
+      "questionId": "introduction-sri-question-01",
+      "selectedOptionId": "option-b"
+    },
+    {
+      "questionId": "introduction-sri-question-02",
+      "selectedOptionId": "option-d"
+    },
+    {
+      "questionId": "introduction-sri-question-03",
+      "selectedOptionId": "option-a"
+    },
+    {
+      "questionId": "introduction-sri-question-04",
+      "selectedOptionId": "option-c"
+    }
+  ]
+}
+
+
+### Check progress after first quiz
+GET {{baseUrl}}/course/progress
+
+
+############################################################
+# SECOND LESSON
+############################################################
+
+### Complete second lesson
+# This should now be accessible after the first quiz.
+POST {{baseUrl}}/course/lessons/{{secondLessonId}}/complete
+
+
+### Get second lesson quiz
+GET {{baseUrl}}/course/quizzes/{{secondQuizId}}
+
+### Complete second lesson quiz
+POST {{baseUrl}}/course/quizzes/{{secondQuizId}}/complete
+Content-Type: application/json
+
+{
+  "answers": [
+    {
+      "questionId": "introduction-sri-question-05",
+      "selectedOptionId": "option-c"
+    },
+    {
+      "questionId": "introduction-sri-question-06",
+      "selectedOptionId": "option-a"
+    },
+    {
+      "questionId": "introduction-sri-question-07",
+      "selectedOptionId": "option-d"
+    },
+    {
+      "questionId": "introduction-sri-question-08",
+      "selectedOptionId": "option-b"
+    },
+    {
+      "questionId": "introduction-sri-question-09",
+      "selectedOptionId": "option-c"
+    }
+  ]
+}
+
+############################################################
+# FINAL TEST
+############################################################
+
+### Start / resume Section 1 Final Test
+# Do NOT run yet.
+# It remains locked until every lesson + quiz in Section 1
+# has been completed.
+POST {{baseUrl}}/course/final-tests/{{section1FinalTestId}}/start
+
+
+### Get Final Test attempt
+# Replace the value after starting an attempt.
+@attemptId = cmtfdb3c50000a0t3zj0jjnkp
+
+GET {{baseUrl}}/course/final-tests/attempts/{{attemptId}}
+
+
+### Submit current Final Test answer
+# Replace questionId and selectedOptionId with values
+# from currentQuestion returned by the attempt.
+
+### Final Test - intentionally WRONG answer 1
+POST {{baseUrl}}/course/final-tests/attempts/{{attemptId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-08",
+  "selectedOptionId": "option-c"
+}
+
+### Final Test - intentionally CORRECT answer 2
+POST {{baseUrl}}/course/final-tests/attempts/{{attemptId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-05",
+  "selectedOptionId": "option-c"
+}
+
+### Final Test - intentionally WRONG answer 3
+POST {{baseUrl}}/course/final-tests/attempts/{{attemptId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-04",
+  "selectedOptionId": "option-a"
+}
+
+### Failed Final Test must NOT unlock Section 2
+POST {{baseUrl}}/course/lessons/sri-assessment-framework-overview/complete
+
+# Correct answers for final test 1:
+# introduction-sri-question-01 → option-b
+# introduction-sri-question-02 → option-d
+# introduction-sri-question-03 → option-a
+# introduction-sri-question-04 → option-c
+# introduction-sri-question-05 → option-c
+# introduction-sri-question-06 → option-a
+# introduction-sri-question-07 → option-d
+# introduction-sri-question-08 → option-b
+# introduction-sri-question-09 → option-c
+
+### Final Test - correct current answer
+POST {{baseUrl}}/course/final-tests/attempts/{{attemptId}}/answer
+Content-Type: application/json
+
+{
+  "questionId": "introduction-sri-question-02",
+  "selectedOptionId": "option-d"
+}
