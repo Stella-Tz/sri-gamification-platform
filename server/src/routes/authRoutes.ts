@@ -48,9 +48,6 @@ router.post("/register", async (req, res) => {
         password: hashedPassword,
         firstName,
         lastName,
-        progress: {
-          create: {},
-        },
       },
       select: userSelect,
     });

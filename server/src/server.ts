@@ -5,10 +5,7 @@ import cors from "cors";
 import session from "express-session";
 
 import authRoutes from "./routes/authRoutes.js";
-import courseRoutes from "./routes/courseRoutes.js";
-import progressRoutes from "./routes/progressRoutes.js";
-import dashboardRoutes from "./routes/dashboardRoutes.js";
-import caseStudyRoutes from "./routes/caseStudyRoutes.js";
+
 
 const app = express();
 
@@ -42,10 +39,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/course", courseRoutes);
-app.use("/api/course", progressRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/case-studies", caseStudyRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
