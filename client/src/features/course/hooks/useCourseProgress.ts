@@ -1,146 +1,152 @@
-//client\src\features\course\hooks\useCourseProgress.ts
+// client/src/features/course/hooks/useCourseProgress.ts
 
 import {
   useCallback,
-  useRef,
+  useEffect,
   useState,
 } from "react";
 
-import type {
-  TheoryLessonId,
-} from "../../theory/types/theory.types";
+import {
+  courseApi,
+} from "../../../api/courseApi";
 
 import type {
-  CourseQuizId,
-  FinalTestAttempt,
   UserCourseProgress,
 } from "../course.types";
 
-import {
-  loadCourseProgress,
-  saveCourseProgress,
-} from "../storage/courseProgressStorage";
-
-import {
-  completeLesson as completeLessonInProgress,
-  completeQuiz as completeQuizInProgress,
-  createEmptyCourseProgress,
-  recordFinalTestAttempt as recordAttemptInProgress,
-} from "../utils/courseProgress.utils";
-
-type CourseProgressUpdater = (
-  currentProgress: UserCourseProgress,
-) => UserCourseProgress;
+const EMPTY_COURSE_PROGRESS:
+  UserCourseProgress = {
+    completedLessonIds: [],
+    completedQuizIds: [],
+    finalTestAttempts: [],
+  };
 
 export const useCourseProgress = () => {
-  const [progress, setProgress] =
+  const [
+    progress,
+    setProgress,
+  ] =
     useState<UserCourseProgress>(
-      loadCourseProgress,
+      EMPTY_COURSE_PROGRESS,
     );
 
-  const progressRef =
-    useRef<UserCourseProgress>(progress);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const updateProgress = useCallback(
-    (
-      updater: CourseProgressUpdater,
-    ): UserCourseProgress => {
-      const currentProgress =
-        progressRef.current;
-
-      const nextProgress =
-        updater(currentProgress);
-
-      if (
-        nextProgress === currentProgress
-      ) {
-        return currentProgress;
-      }
-
-      progressRef.current =
-        nextProgress;
-
-      saveCourseProgress(
-        nextProgress,
-      );
-
-      setProgress(nextProgress);
-
-      return nextProgress;
-    },
-    [],
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
   );
 
-  const completeLesson = useCallback(
-    (
-      lessonId: TheoryLessonId,
-    ): UserCourseProgress => {
-      return updateProgress(
-        (currentProgress) =>
-          completeLessonInProgress(
-            currentProgress,
-            lessonId,
-          ),
-      );
-    },
-    [updateProgress],
-  );
-
-  const completeQuiz = useCallback(
-    (
-      quizId: CourseQuizId,
-    ): UserCourseProgress => {
-      return updateProgress(
-        (currentProgress) =>
-          completeQuizInProgress(
-            currentProgress,
-            quizId,
-          ),
-      );
-    },
-    [updateProgress],
-  );
-
-  const recordFinalTestAttempt =
+  const replaceProgress =
     useCallback(
       (
-        attempt: FinalTestAttempt,
+        nextProgress:
+          UserCourseProgress,
       ): UserCourseProgress => {
-        return updateProgress(
-          (currentProgress) =>
-            recordAttemptInProgress(
-              currentProgress,
-              attempt,
-            ),
+        setProgress(
+          nextProgress,
         );
+
+        setError(
+          null,
+        );
+
+        return nextProgress;
       },
-      [updateProgress],
+      [],
     );
 
-  const resetProgress = useCallback(
-    (): UserCourseProgress => {
-      const emptyProgress =
-        createEmptyCourseProgress();
+  const refreshProgress =
+    useCallback(
+      async (): Promise<UserCourseProgress> => {
+        try {
+          setIsLoading(
+            true,
+          );
 
-      progressRef.current =
-        emptyProgress;
+          setError(
+            null,
+          );
 
-      saveCourseProgress(
-        emptyProgress,
-      );
+          const nextProgress =
+            await courseApi.getProgress();
 
-      setProgress(emptyProgress);
+          setProgress(
+            nextProgress,
+          );
 
-      return emptyProgress;
-    },
-    [],
-  );
+          return nextProgress;
+        } catch (loadError) {
+          const message =
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load course progress.";
+
+          setError(
+            message,
+          );
+
+          throw loadError;
+        } finally {
+          setIsLoading(
+            false,
+          );
+        }
+      },
+      [],
+    );
+
+  useEffect(() => {
+    void refreshProgress().catch(
+      () => undefined,
+    );
+  }, [refreshProgress]);
+
+  const resetProgress =
+    useCallback(
+      async (): Promise<UserCourseProgress> => {
+        try {
+          setError(
+            null,
+          );
+
+          const nextProgress =
+            await courseApi.resetProgress();
+
+          setProgress(
+            nextProgress,
+          );
+
+          return nextProgress;
+        } catch (resetError) {
+          const message =
+            resetError instanceof Error
+              ? resetError.message
+              : "Failed to reset course progress.";
+
+          setError(
+            message,
+          );
+
+          throw resetError;
+        }
+      },
+      [],
+    );
 
   return {
     progress,
-    completeLesson,
-    completeQuiz,
-    recordFinalTestAttempt,
+
+    isLoading,
+    error,
+
+    replaceProgress,
+    refreshProgress,
     resetProgress,
   };
 };

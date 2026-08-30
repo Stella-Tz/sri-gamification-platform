@@ -2,6 +2,7 @@
 
 import {
   useMemo,
+  useState,
 } from "react";
 
 import {
@@ -17,6 +18,10 @@ import {
 
 import ForwardArrowIcon from "../components/ui/ForwardArrowIcon";
 import PrimaryButton from "../components/ui/PrimaryButton";
+
+import {
+  courseApi,
+} from "../api/courseApi";
 
 import {
   ROUTES,
@@ -67,8 +72,24 @@ const CourseLessonPage = () => {
 
   const {
     progress,
-    completeLesson,
+    isLoading:
+      isProgressLoading,
+    error:
+      progressError,
+    replaceProgress,
   } = useCourseProgress();
+
+  const [
+    isCompletingLesson,
+    setIsCompletingLesson,
+  ] = useState(false);
+
+  const [
+    completionError,
+    setCompletionError,
+  ] = useState<string | null>(
+    null,
+  );
 
   const overview = useMemo(
     () =>
@@ -101,10 +122,6 @@ const CourseLessonPage = () => {
           lessonId,
     ) ?? null;
 
-  const isLessonCompleted =
-    lessonStep?.status ===
-    "completed";
-
   const isLessonOpenable =
     lessonStep !== null &&
     lessonStep.status !==
@@ -127,6 +144,22 @@ const CourseLessonPage = () => {
     );
   }
 
+  if (isProgressLoading) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
+        Loading course progress...
+      </div>
+    );
+  }
+
+  if (progressError) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-3xl border border-red-200 bg-red-50 p-8 text-center text-sm font-semibold text-red-700">
+        {progressError}
+      </div>
+    );
+  }
+
   if (!isLessonOpenable) {
     return (
       <Navigate
@@ -137,18 +170,45 @@ const CourseLessonPage = () => {
   }
 
   const handleContinueToQuiz =
-    () => {
-      if (!isLessonCompleted) {
-        completeLesson(
-          lesson.id,
-        );
+    async () => {
+      if (isCompletingLesson) {
+        return;
       }
 
-      navigate(
-        getCourseStepPath(
-          quizStep,
-        ),
-      );
+      try {
+        setIsCompletingLesson(
+          true,
+        );
+
+        setCompletionError(
+          null,
+        );
+
+        const nextProgress =
+          await courseApi.completeLesson(
+            lessonStep.id,
+          );
+
+        replaceProgress(
+          nextProgress,
+        );
+
+        navigate(
+          getCourseStepPath(
+            quizStep,
+          ),
+        );
+      } catch (error) {
+        setCompletionError(
+          error instanceof Error
+            ? error.message
+            : "Failed to complete lesson.",
+        );
+      } finally {
+        setIsCompletingLesson(
+          false,
+        );
+      }
     };
 
   return (
@@ -194,19 +254,31 @@ const CourseLessonPage = () => {
           section.order
         }
       />
+      {completionError ? (
+        <p className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {completionError}
+        </p>
+      ) : null}
 
       <div className="mt-10 flex justify-end">
         <PrimaryButton
           type="button"
-          onClick={
-            handleContinueToQuiz
+          onClick={() => {
+            void handleContinueToQuiz();
+          }}
+          disabled={
+            isCompletingLesson
           }
           className="group w-full justify-center sm:w-auto"
         >
           <span className="inline-flex items-center gap-2">
-            Continue to Quiz
+            {isCompletingLesson
+              ? "Saving..."
+              : "Continue to Quiz"}
 
-            <ForwardArrowIcon />
+            {!isCompletingLesson ? (
+              <ForwardArrowIcon />
+            ) : null}
           </span>
         </PrimaryButton>
       </div>

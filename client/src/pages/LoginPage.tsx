@@ -1,22 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../app/providers/AuthProvider";
 import PrimaryButton from "../components/ui/PrimaryButton";
 import { ROUTES } from "../constants/routes";
 
-type LocationState = {
-  from?: {
-    pathname?: string;
-  };
-};
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useAuth();
-
-  const state = location.state as LocationState | null;
-  const redirectTo = state?.from?.pathname ?? ROUTES.dashboard;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,7 +48,12 @@ const LoginPage = () => {
         password,
       });
 
-      navigate(redirectTo, { replace: true });
+      navigate(
+        ROUTES.dashboard,
+        {
+          replace: true,
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to login.");
     } finally {

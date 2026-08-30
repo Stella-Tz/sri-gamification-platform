@@ -14,6 +14,10 @@ import {
 } from "../../../constants/routes";
 
 import {
+  getCourseStepPath,
+} from "../../course/course.routes";
+
+import {
   caseStudyMockData,
 } from "../../caseStudy/data/caseStudyMockData";
 
@@ -173,6 +177,12 @@ export const useDashboard = () => {
   const {
     progress:
       courseProgress,
+
+    isLoading:
+      isCourseProgressLoading,
+
+    error:
+      courseProgressError,
   } = useCourseProgress();
 
   const {
@@ -352,6 +362,13 @@ export const useDashboard = () => {
             })()
           : null;
 
+      const currentCourseStepPath =
+        courseOverview.currentStep
+          ? getCourseStepPath(
+              courseOverview.currentStep,
+            )
+          : ROUTES.courses;
+
       let nextAction:
         DashboardNextAction;
 
@@ -367,7 +384,7 @@ export const useDashboard = () => {
                   "start-learning",
 
                 path:
-                  ROUTES.courses,
+                  currentCourseStepPath,
 
                 milestone:
                   learningMilestone,
@@ -377,12 +394,13 @@ export const useDashboard = () => {
                   "continue-learning",
 
                 path:
-                  ROUTES.courses,
+                  currentCourseStepPath,
 
                 milestone:
                   learningMilestone,
               };
-      } else {
+      }
+      else {
         switch (
           caseStudyStatus
         ) {
@@ -562,9 +580,9 @@ export const useDashboard = () => {
               sectionTitle:
                 section.shortTitle,
 
-              accuracy:
+              score:
                 latestAttempt
-                  ?.accuracyPercentage ??
+                  ?.scorePercentage ??
                 null,
 
               passed:
@@ -573,8 +591,7 @@ export const useDashboard = () => {
                 null,
 
               attemptCount:
-                sectionAttempts
-                  .length,
+                sectionAttempts.length,
             };
           },
         );
@@ -810,9 +827,9 @@ export const useDashboard = () => {
     dashboard,
 
     isLoading:
-      false,
+      isCourseProgressLoading,
 
     error:
-      null as string | null,
+      courseProgressError,
   };
 };

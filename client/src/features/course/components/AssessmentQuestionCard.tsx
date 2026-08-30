@@ -16,6 +16,7 @@ import type {
 
 import AssessmentHeader from "./AssessmentHeader";
 
+
 type AssessmentQuestionCardProps = {
   eyebrow: string;
 
@@ -23,6 +24,17 @@ type AssessmentQuestionCardProps = {
   totalQuestions: number;
 
   question: CourseQuestion;
+
+  correctOptionId:
+    | string
+    | null;
+
+  explanation:
+    | string
+    | null;
+
+  isSubmittingAnswer?: boolean;
+  isContinuing?: boolean;
 
   selectedOptionId:
     | string
@@ -50,6 +62,10 @@ const AssessmentQuestionCard = ({
   totalQuestions,
 
   question,
+  correctOptionId,
+  explanation,
+  isSubmittingAnswer = false,
+  isContinuing = false,
 
   selectedOptionId,
   feedback,
@@ -111,7 +127,7 @@ const AssessmentQuestionCard = ({
 
                 const isCorrectOption =
                   option.id ===
-                  question.correctOptionId;
+                  correctOptionId;
 
                 const showCorrectState =
                   isSubmitted &&
@@ -248,7 +264,7 @@ const AssessmentQuestionCard = ({
             <QuizFeedbackMessage
               feedback={feedback}
               explanation={
-                question.explanation
+                explanation ?? undefined
               }
             />
           </div>
@@ -259,6 +275,7 @@ const AssessmentQuestionCard = ({
             <PrimaryButton
               type="button"
               onClick={onContinue}
+              disabled={isContinuing}
               className="group w-full justify-center sm:w-auto"
             >
               <span className="inline-flex items-center gap-2">
@@ -274,8 +291,8 @@ const AssessmentQuestionCard = ({
               type="button"
               onClick={onSubmitAnswer}
               disabled={
-                selectedOptionId ===
-                null
+                selectedOptionId === null ||
+                isSubmittingAnswer
               }
               className="
                 w-full
@@ -285,7 +302,9 @@ const AssessmentQuestionCard = ({
                 sm:w-auto
               "
             >
-              Check Answer
+              {isSubmittingAnswer
+                ? "Checking..."
+                : "Check Answer"}
             </PrimaryButton>
           )}
         </div>

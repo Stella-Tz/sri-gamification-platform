@@ -7,6 +7,11 @@ import {
   useState,
 } from "react";
 
+import {
+  courseApi,
+  type LessonQuizCompletionAnswer,
+} from "../../../api/courseApi";
+
 import type {
   CourseQuestion,
   LessonQuizFeedback,
@@ -14,14 +19,20 @@ import type {
 
 type UseLessonQuizSessionOptions = {
   quizId: string;
-  questions:
-    readonly CourseQuestion[];
+  enabled?: boolean;
 };
 
 export const useLessonQuizSession = ({
   quizId,
-  questions,
+  enabled = true,
 }: UseLessonQuizSessionOptions) => {
+  const [
+    questions,
+    setQuestions,
+  ] = useState<
+    readonly CourseQuestion[]
+  >([]);
+
   const [
     currentQuestionIndex,
     setCurrentQuestionIndex,
@@ -41,6 +52,49 @@ export const useLessonQuizSession = ({
     useState<LessonQuizFeedback>(
       "idle",
     );
+
+  const [
+    correctOptionId,
+    setCorrectOptionId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    explanation,
+    setExplanation,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    answersByQuestionId,
+    setAnswersByQuestionId,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
+
+  const [
+    isSubmittingAnswer,
+    setIsSubmittingAnswer,
+  ] = useState(false);
+
+  const [
+    isCompletingQuiz,
+    setIsCompletingQuiz,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
 
   const currentQuestion =
     questions[
@@ -68,67 +122,195 @@ export const useLessonQuizSession = ({
     useCallback(() => {
       setSelectedOptionId(null);
       setFeedback("idle");
+
+      setCorrectOptionId(null);
+      setExplanation(null);
+
+      setError(null);
     }, []);
 
   const resetSession =
     useCallback(() => {
       setCurrentQuestionIndex(0);
+
+      setAnswersByQuestionId(
+        {},
+      );
+
       resetQuestionState();
     }, [resetQuestionState]);
 
   useEffect(() => {
     resetSession();
+
+    setQuestions([]);
+
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadQuiz = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const quiz =
+          await courseApi.getLessonQuiz(
+            quizId,
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        setQuestions(
+          quiz.questions,
+        );
+      } catch (loadError) {
+        if (cancelled) {
+          return;
+        }
+
+        setQuestions([]);
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load quiz.",
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadQuiz();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
+    enabled,
     quizId,
-    totalQuestions,
     resetSession,
   ]);
 
-  const selectOption = useCallback(
-    (optionId: string) => {
-      if (isSubmitted) {
-        return;
-      }
+  const selectOption =
+    useCallback(
+      (optionId: string) => {
+        if (
+          isSubmitted ||
+          isSubmittingAnswer
+        ) {
+          return;
+        }
 
-      setSelectedOptionId(
-        optionId,
-      );
+        setSelectedOptionId(
+          optionId,
+        );
 
-      if (feedback === "empty") {
-        setFeedback("idle");
-      }
-    },
-    [feedback, isSubmitted],
-  );
+        if (
+          feedback === "empty"
+        ) {
+          setFeedback("idle");
+        }
+
+        setError(null);
+      },
+      [
+        feedback,
+        isSubmitted,
+        isSubmittingAnswer,
+      ],
+    );
 
   const submitAnswer =
-    useCallback((): boolean => {
-      if (
-        !currentQuestion
-      ) {
-        return false;
-      }
+    useCallback(
+      async (): Promise<boolean> => {
+        if (
+          !currentQuestion ||
+          isSubmitted ||
+          isSubmittingAnswer
+        ) {
+          return false;
+        }
 
-      if (!selectedOptionId) {
-        setFeedback("empty");
-        return false;
-      }
+        if (!selectedOptionId) {
+          setFeedback("empty");
+          return false;
+        }
 
-      const isCorrect =
-        selectedOptionId ===
-        currentQuestion.correctOptionId;
+        try {
+          setIsSubmittingAnswer(
+            true,
+          );
 
-      setFeedback(
-        isCorrect
-          ? "correct"
-          : "incorrect",
-      );
+          setError(null);
 
-      return true;
-    }, [
-      currentQuestion,
-      selectedOptionId,
-    ]);
+          const result =
+            await courseApi.validateLessonQuizAnswer(
+              {
+                quizStepId:
+                  quizId,
+
+                questionId:
+                  currentQuestion.id,
+
+                selectedOptionId,
+              },
+            );
+
+          setCorrectOptionId(
+            result.correctOptionId,
+          );
+
+          setExplanation(
+            result.explanation,
+          );
+
+          setFeedback(
+            result.correct
+              ? "correct"
+              : "incorrect",
+          );
+
+          setAnswersByQuestionId(
+            (currentAnswers) => ({
+              ...currentAnswers,
+
+              [currentQuestion.id]:
+                selectedOptionId,
+            }),
+          );
+
+          return true;
+        } catch (submitError) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : "Failed to check answer.",
+          );
+
+          return false;
+        } finally {
+          setIsSubmittingAnswer(
+            false,
+          );
+        }
+      },
+      [
+        currentQuestion,
+        isSubmitted,
+        isSubmittingAnswer,
+        quizId,
+        selectedOptionId,
+      ],
+    );
 
   const goToNextQuestion =
     useCallback(() => {
@@ -172,7 +354,87 @@ export const useLessonQuizSession = ({
       selectedOptionId,
     ]);
 
+  const answers =
+    useMemo<
+      LessonQuizCompletionAnswer[]
+    >(
+      () =>
+        questions.flatMap(
+          (question) => {
+            const answer =
+              answersByQuestionId[
+                question.id
+              ];
+
+            if (!answer) {
+              return [];
+            }
+
+            return [
+              {
+                questionId:
+                  question.id,
+
+                selectedOptionId:
+                  answer,
+              },
+            ];
+          },
+        ),
+      [
+        answersByQuestionId,
+        questions,
+      ],
+    );
+
+  const completeQuiz =
+    useCallback(async () => {
+      if (
+        totalQuestions === 0 ||
+        answers.length !==
+          totalQuestions
+      ) {
+        throw new Error(
+          "All quiz questions must be answered before completion.",
+        );
+      }
+
+      try {
+        setIsCompletingQuiz(
+          true,
+        );
+
+        setError(null);
+
+        return await courseApi.completeLessonQuiz(
+          {
+            quizStepId: quizId,
+            answers,
+          },
+        );
+      } catch (completionError) {
+        setError(
+          completionError instanceof
+            Error
+            ? completionError.message
+            : "Failed to complete quiz.",
+        );
+
+        throw completionError;
+      } finally {
+        setIsCompletingQuiz(
+          false,
+        );
+      }
+    }, [
+      answers,
+      quizId,
+      totalQuestions,
+    ]);
+
   return {
+    questions,
+
     currentQuestion,
     currentQuestionIndex,
     currentQuestionNumber,
@@ -181,13 +443,23 @@ export const useLessonQuizSession = ({
     selectedOptionId,
     selectedOption,
 
+    correctOptionId,
+    explanation,
+
     feedback,
+
     isSubmitted,
     isLastQuestion,
+
+    isLoading,
+    isSubmittingAnswer,
+    isCompletingQuiz,
+    error,
 
     selectOption,
     submitAnswer,
     goToNextQuestion,
+    completeQuiz,
     resetSession,
   };
 };

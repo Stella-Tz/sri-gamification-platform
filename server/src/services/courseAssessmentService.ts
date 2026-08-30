@@ -712,40 +712,6 @@ export const startFinalTest =
       );
     }
 
-    /*
-     * If the page was refreshed during
-     * an active attempt, resume it
-     * instead of creating a second one.
-     */
-    const existingAttempt =
-      await prisma.finalTestAttempt.findFirst(
-        {
-          where: {
-            userId,
-            finalTestStepId:
-              step.id,
-
-            status:
-              FinalTestAttemptStatus.IN_PROGRESS,
-          },
-
-          orderBy: {
-            startedAt: "desc",
-          },
-
-          select: {
-            id: true,
-          },
-        },
-      );
-
-    if (existingAttempt) {
-      return toFinalTestState(
-        userId,
-        existingAttempt.id,
-      );
-    }
-
     const questions =
       await prisma.courseQuestion.findMany(
         {
@@ -773,6 +739,25 @@ export const startFinalTest =
         "No questions are registered for this final test.",
       );
     }
+
+    /*
+    * An unfinished final test does not count
+    * as a completed attempt.
+    *
+    * Re-entering the final test starts a new
+    * attempt from the beginning.
+    */
+    await prisma.finalTestAttempt.deleteMany({
+      where: {
+        userId,
+
+        finalTestStepId:
+          step.id,
+
+        status:
+          FinalTestAttemptStatus.IN_PROGRESS,
+      },
+    });
 
     /*
      * Same rule as the current

@@ -21,10 +21,6 @@ import type {
 } from "../course.types";
 
 import {
-  getSectionFinalTestQuestionPool,
-} from "./questions";
-
-import {
   getCourseSectionAchievement,
 } from "./courseAchievements";
 
@@ -59,29 +55,12 @@ const getRequiredTheoryLesson = (
   return lesson;
 };
 
-const getAllowedMistakes = (
-  totalQuestions: number,
-): number => {
-  return Math.floor(
-    totalQuestions * 0.2,
-  );
-};
 
 const buildSectionSteps = (
   section: TheorySection,
 ): readonly CourseStepDefinition[] => {
   const steps:
     CourseStepDefinition[] = [];
-
-  const finalTestQuestionCount =
-    getSectionFinalTestQuestionPool(
-      section.id,
-    ).length;
-
-  const allowedMistakes =
-    getAllowedMistakes(
-      finalTestQuestionCount,
-    );
 
   section.lessonIds.forEach(
     (lessonId, index) => {
@@ -139,7 +118,6 @@ const buildSectionSteps = (
       } Final Test`,
     subtitle:
       "Complete the section assessment to earn its achievement and unlock the next section.",
-    allowedMistakes,
   });
 
   return steps;

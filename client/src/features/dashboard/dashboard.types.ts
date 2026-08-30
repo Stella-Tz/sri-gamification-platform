@@ -58,7 +58,7 @@ export type JourneyStep = {
 export type AssessmentProgressItem = {
   sectionId: string;
   sectionTitle: string;
-  accuracy: number | null;
+  score: number | null;
   passed: boolean | null;
   attemptCount: number;
 };

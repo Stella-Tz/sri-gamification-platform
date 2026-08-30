@@ -268,6 +268,9 @@ POST {{baseUrl}}/course/final-tests/attempts/{{attemptId}}/answer
 Content-Type: application/json
 
 {
-  "questionId": "introduction-sri-question-02",
-  "selectedOptionId": "option-d"
+  "questionId": "introduction-sri-question-04",
+  "selectedOptionId": "option-c"
 }
+
+### PASSED Final Test must unlock Section 2
+POST {{baseUrl}}/course/lessons/sri-assessment-framework-overview/complete

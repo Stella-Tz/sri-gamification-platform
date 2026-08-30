@@ -63,7 +63,7 @@ const AssessmentProgressCard = ({
   items,
 }: AssessmentProgressCardProps) => {
   const attemptedCount = items.filter(
-    (item) => item.accuracy !== null,
+    (item) => item.score !== null,
   ).length;
 
   const hasAttempts = attemptedCount > 0;
@@ -73,7 +73,7 @@ const AssessmentProgressCard = ({
     datasets: [
       {
         label: "Latest final test score",
-        data: items.map((item) => item.accuracy),
+        data: items.map((item) => item.score),
         backgroundColor: items.map((item) =>
           item.passed === false
             ? "rgba(245, 158, 11, 0.20)"
@@ -116,7 +116,7 @@ const AssessmentProgressCard = ({
           },
           label: (context: TooltipItem<"bar">) => {
             const item = items[context.dataIndex];
-            const value = item?.accuracy ?? null;
+            const value = item?.score ?? null;
 
             if (value === null) {
               return "Not attempted yet";

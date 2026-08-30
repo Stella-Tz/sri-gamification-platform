@@ -1,7 +1,6 @@
 // client/src/pages/SectionFinalTestPage.tsx
 
 import {
-  useEffect,
   useMemo,
   useRef,
 } from "react";
@@ -16,6 +15,10 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+
+import {
+  courseApi,
+} from "../api/courseApi";
 
 import PrimaryButton from "../components/ui/PrimaryButton";
 
@@ -32,24 +35,12 @@ import {
 } from "../features/course/data/courseDefinition";
 
 import {
-  getSectionFinalTestQuestionPool,
-} from "../features/course/data/questions";
-
-import {
   useCourseProgress,
 } from "../features/course/hooks/useCourseProgress";
 
 import {
   useFinalTestSession,
 } from "../features/course/hooks/useFinalTestSession";
-
-import {
-  createFinalTestAttempt,
-} from "../features/course/utils/assessment.utils";
-
-import {
-  buildCourseOverview,
-} from "../features/course/utils/buildCourseOverview";
 
 const SectionFinalTestPage = () => {
   const navigate =
@@ -69,18 +60,8 @@ const SectionFinalTestPage = () => {
   }>();
 
   const {
-    progress,
-    recordFinalTestAttempt,
+    replaceProgress,
   } = useCourseProgress();
-
-  const overview = useMemo(
-    () =>
-      buildCourseOverview(
-        courseDefinition,
-        progress,
-      ),
-    [progress],
-  );
 
   const sectionDefinition =
     useMemo(() => {
@@ -124,128 +105,19 @@ const SectionFinalTestPage = () => {
       sectionDefinition,
     ]);
 
-  const sectionView =
-    useMemo(() => {
-      if (!sectionDefinition) {
-        return null;
-      }
-
-      return (
-        overview.sections.find(
-          (section) =>
-            section.id ===
-            sectionDefinition.id,
-        ) ?? null
-      );
-    }, [
-      overview.sections,
-      sectionDefinition,
-    ]);
-
-  const finalTestStepView =
-    useMemo(() => {
-      if (
-        !sectionView ||
-        !finalTestStep
-      ) {
-        return null;
-      }
-
-      const step =
-        sectionView.steps.find(
-          (candidate) =>
-            candidate.id ===
-            finalTestStep.id,
-        );
-
-      return step?.type ===
-        "final-test"
-        ? step
-        : null;
-    }, [
-      finalTestStep,
-      sectionView,
-    ]);
-
-  const questionPool =
-    useMemo(() => {
-      if (!sectionDefinition) {
-        return [];
-      }
-
-      return getSectionFinalTestQuestionPool(
-        sectionDefinition.id,
-      );
-    }, [sectionDefinition]);
-
   const session =
     useFinalTestSession({
       finalTestId:
         finalTestStep?.id ??
         "unavailable-final-test",
 
-      questionPool,
-
-      allowedMistakes:
-        finalTestStep
-          ?.allowedMistakes ?? 0,
+      enabled:
+        Boolean(
+          sectionDefinition &&
+          finalTestStep,
+        ),
     });
 
-  const recordedSessionIdRef =
-    useRef<string | null>(
-      null,
-    );
-
-  useEffect(() => {
-    if (
-      !sectionDefinition ||
-      !finalTestStep ||
-      session.result ===
-        "in-progress" ||
-      recordedSessionIdRef.current ===
-        session.sessionId
-    ) {
-      return;
-    }
-
-    recordedSessionIdRef.current =
-      session.sessionId;
-
-    recordFinalTestAttempt(
-      createFinalTestAttempt({
-        id: session.sessionId,
-
-        sectionId:
-          sectionDefinition.id,
-
-        finalTestId:
-          finalTestStep.id,
-
-        correctCount:
-          session.correctCount,
-
-        wrongCount:
-          session.wrongCount,
-
-        totalQuestions:
-          session.totalQuestions,
-
-        passed:
-          session.result ===
-          "passed",
-      }),
-    );
-  }, [
-    finalTestStep,
-    recordFinalTestAttempt,
-    sectionDefinition,
-
-    session.correctCount,
-    session.result,
-    session.sessionId,
-    session.totalQuestions,
-    session.wrongCount,
-  ]);
 
   const nextSectionDefinition =
     useMemo(() => {
@@ -273,9 +145,7 @@ const SectionFinalTestPage = () => {
 
   if (
     !sectionDefinition ||
-    !finalTestStep ||
-    !sectionView ||
-    !finalTestStepView
+    !finalTestStep
   ) {
     return (
       <Navigate
@@ -285,23 +155,23 @@ const SectionFinalTestPage = () => {
     );
   }
 
-  if (
-    finalTestStepView.status ===
-    "locked"
-  ) {
+  if (session.isLoading) {
     return (
-      <Navigate
-        to={ROUTES.courses}
-        replace
-      />
+      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
+        Loading final test...
+      </div>
     );
   }
 
   if (
-    questionPool.length === 0
+    session.error &&
+    !session.currentQuestion &&
+    session.result ===
+      "in-progress"
   ) {
     return (
       <FinalTestUnavailable
+        message={session.error}
         onReturn={() =>
           navigate(
             ROUTES.courses,
@@ -346,9 +216,9 @@ const SectionFinalTestPage = () => {
               ROUTES.courses,
             );
           }}
-          onReview={
-            session.retry
-          }
+          onReview={() => {
+            void session.retry();
+          }}
         />
       </div>
     );
@@ -377,16 +247,16 @@ const SectionFinalTestPage = () => {
             session.totalQuestions
           }
           allowedMistakes={
-            finalTestStep.allowedMistakes
+            session.allowedMistakes
           }
           onBack={() =>
             navigate(
               ROUTES.courses,
             )
           }
-          onRetry={
-            session.retry
-          }
+          onRetry={() => {
+            void session.retry();
+          }}
         />
       </div>
     );
@@ -413,6 +283,38 @@ const SectionFinalTestPage = () => {
           behavior: "auto",
           block: "start",
         });
+    };
+  
+  const handleSubmitAnswer =
+    async () => {
+      const nextAttempt =
+        await session.submitAnswer();
+
+      if (
+        !nextAttempt ||
+        nextAttempt.status ===
+          "in-progress"
+      ) {
+        return;
+      }
+
+      /**
+     * Refresh Course progress after the
+     * final-test attempt is completed.
+     */
+      try {
+        const nextProgress =
+          await courseApi.getProgress();
+
+        replaceProgress(
+          nextProgress,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to refresh course progress.",
+          error,
+        );
+      }
     };
 
   const continueToNextQuestion =
@@ -497,9 +399,9 @@ const SectionFinalTestPage = () => {
           onSelectOption={
             session.selectOption
           }
-          onSubmitAnswer={
-            session.submitAnswer
-          }
+          onSubmitAnswer={() => {
+            void handleSubmitAnswer();
+          }}
           onContinue={
             continueToNextQuestion
           }
@@ -510,10 +412,12 @@ const SectionFinalTestPage = () => {
 };
 
 type FinalTestUnavailableProps = {
+  message?: string;
   onReturn: () => void;
 };
 
 const FinalTestUnavailable = ({
+  message,
   onReturn,
 }: FinalTestUnavailableProps) => {
   return (
@@ -530,12 +434,9 @@ const FinalTestUnavailable = ({
       </h1>
 
       <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-        No question pool has been
-        registered for this section.
-        Verify the corresponding entry
-        in the course question
-        registry.
-      </p>
+       {message ??
+         "The final test could not be loaded."}
+     </p>
 
       <div className="mt-6 flex justify-center">
         <PrimaryButton

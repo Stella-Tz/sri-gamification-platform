@@ -7,355 +7,512 @@ import {
   useState,
 } from "react";
 
+import {
+  courseApi,
+  type FinalTestState,
+} from "../../../api/courseApi";
+
 import type {
   CourseQuestion,
   FinalTestFeedback,
-  FinalTestResult,
 } from "../course.types";
-
-import {
-  calculateAccuracyPercentage,
-  createFinalTestSessionId,
-  prepareFinalTestQuestions,
-} from "../utils/assessment.utils";
 
 type UseFinalTestSessionOptions = {
   finalTestId: string;
-
-  questionPool:
-    readonly CourseQuestion[];
-
-  allowedMistakes: number;
-};
-
-type FinalTestSessionState = {
-  sessionId: string;
-
-  questions:
-    readonly CourseQuestion[];
-
-  currentQuestionIndex: number;
-  selectedOptionId:
-    | string
-    | null;
-
-  feedback:
-    FinalTestFeedback;
-
-  isSubmitted: boolean;
-
-  correctCount: number;
-  wrongCount: number;
-
-  result:
-    FinalTestResult;
-};
-
-const createSessionState = (
-  questionPool:
-    readonly CourseQuestion[],
-): FinalTestSessionState => {
-  return {
-    sessionId:
-      createFinalTestSessionId(),
-
-    questions:
-      prepareFinalTestQuestions(
-        questionPool,
-      ),
-
-    currentQuestionIndex: 0,
-    selectedOptionId: null,
-
-    feedback: "idle",
-    isSubmitted: false,
-
-    correctCount: 0,
-    wrongCount: 0,
-
-    result: "in-progress",
-  };
+  enabled?: boolean;
 };
 
 export const useFinalTestSession = ({
   finalTestId,
-  questionPool,
-  allowedMistakes,
+  enabled = true,
 }: UseFinalTestSessionOptions) => {
-  const createInitialState =
-    useCallback(() => {
-      return createSessionState(
-        questionPool,
-      );
-    }, [questionPool]);
+  const [
+    attempt,
+    setAttempt,
+  ] = useState<FinalTestState | null>(
+    null,
+  );
+
+  /*
+   * The backend advances to the next
+   * question immediately after an answer.
+   *
+   * We keep the answered question visible
+   * temporarily so the user can see the
+   * Correct / Incorrect feedback before
+   * pressing Next Question.
+   */
+  const [
+    displayQuestion,
+    setDisplayQuestion,
+  ] =
+    useState<CourseQuestion | null>(
+      null,
+    );
 
   const [
-    state,
-    setState,
+    displayQuestionNumber,
+    setDisplayQuestionNumber,
+  ] = useState(0);
+
+  const [
+    selectedOptionId,
+    setSelectedOptionId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    feedback,
+    setFeedback,
   ] =
-    useState<FinalTestSessionState>(
-      createInitialState,
+    useState<FinalTestFeedback>(
+      "idle",
     );
 
-  useEffect(() => {
-    setState(
-      createInitialState(),
-    );
-  }, [
-    finalTestId,
-    allowedMistakes,
-    createInitialState,
-  ]);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
 
-  const currentQuestion =
-    state.questions[
-      state.currentQuestionIndex
-    ] ?? null;
+  const [
+    isSubmittingAnswer,
+    setIsSubmittingAnswer,
+  ] = useState(false);
 
-  const totalQuestions =
-    state.questions.length;
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const currentQuestionNumber =
-    currentQuestion
-      ? state.currentQuestionIndex +
-        1
-      : 0;
+  const isSubmitted =
+    feedback === "correct" ||
+    feedback === "incorrect";
 
-  const isLastQuestion =
-    totalQuestions > 0 &&
-    state.currentQuestionIndex ===
-      totalQuestions - 1;
-
-  const answeredCount =
-    state.correctCount +
-    state.wrongCount;
-
-  const remainingMistakes =
-    Math.max(
-      0,
-      allowedMistakes -
-        state.wrongCount,
-    );
-
-  const accuracyPercentage =
-    calculateAccuracyPercentage(
-      state.correctCount,
-      totalQuestions,
-    );
-
-  const selectedOption =
-    useMemo(() => {
-      if (
-        !currentQuestion ||
-        !state.selectedOptionId
-      ) {
-        return null;
-      }
-
-      return (
-        currentQuestion.options.find(
-          (option) =>
-            option.id ===
-            state.selectedOptionId,
-        ) ?? null
-      );
-    }, [
-      currentQuestion,
-      state.selectedOptionId,
-    ]);
-
-  const selectOption =
+  const applyAttempt =
     useCallback(
-      (optionId: string) => {
-        setState(
-          (currentState) => {
-            if (
-              currentState.result !==
-                "in-progress" ||
-              currentState
-                .isSubmitted
-            ) {
-              return currentState;
-            }
+      (
+        nextAttempt:
+          FinalTestState,
+      ) => {
+        setAttempt(
+          nextAttempt,
+        );
 
-            return {
-              ...currentState,
-              selectedOptionId:
-                optionId,
-              feedback: "idle",
-            };
-          },
+        setDisplayQuestion(
+          nextAttempt.currentQuestion,
+        );
+
+        setDisplayQuestionNumber(
+          nextAttempt.currentQuestionNumber,
+        );
+
+        setSelectedOptionId(
+          null,
+        );
+
+        setFeedback(
+          "idle",
+        );
+
+        setError(
+          null,
         );
       },
       [],
     );
 
+  const startAttempt =
+    useCallback(
+      async () => {
+        const nextAttempt =
+          await courseApi.startFinalTest(
+            finalTestId,
+          );
+
+        applyAttempt(
+          nextAttempt,
+        );
+
+        return nextAttempt;
+      },
+      [
+        applyAttempt,
+        finalTestId,
+      ],
+    );
+
+  useEffect(() => {
+    if (!enabled) {
+      setAttempt(null);
+      setDisplayQuestion(null);
+      setDisplayQuestionNumber(0);
+      setSelectedOptionId(null);
+      setFeedback("idle");
+      setError(null);
+      setIsLoading(false);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAttempt =
+      async () => {
+        try {
+          setIsLoading(
+            true,
+          );
+
+          setError(
+            null,
+          );
+
+          const nextAttempt =
+            await courseApi.startFinalTest(
+              finalTestId,
+            );
+
+          if (cancelled) {
+            return;
+          }
+
+          applyAttempt(
+            nextAttempt,
+          );
+        } catch (loadError) {
+          if (cancelled) {
+            return;
+          }
+
+          setAttempt(null);
+          setDisplayQuestion(null);
+
+          setError(
+            loadError instanceof
+              Error
+              ? loadError.message
+              : "Failed to load final test.",
+          );
+        } finally {
+          if (!cancelled) {
+            setIsLoading(
+              false,
+            );
+          }
+        }
+      };
+
+    void loadAttempt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyAttempt,
+    enabled,
+    finalTestId,
+  ]);
+
+  const selectOption =
+    useCallback(
+      (optionId: string) => {
+        if (
+          !attempt ||
+          attempt.status !==
+            "in-progress" ||
+          isSubmitted ||
+          isSubmittingAnswer
+        ) {
+          return;
+        }
+
+        setSelectedOptionId(
+          optionId,
+        );
+
+        if (
+          feedback === "empty"
+        ) {
+          setFeedback(
+            "idle",
+          );
+        }
+
+        setError(
+          null,
+        );
+      },
+      [
+        attempt,
+        feedback,
+        isSubmitted,
+        isSubmittingAnswer,
+      ],
+    );
+
   const submitAnswer =
-    useCallback(() => {
-      setState(
-        (currentState) => {
+    useCallback(
+      async (): Promise<
+        FinalTestState | null
+      > => {
+        if (
+          !attempt ||
+          attempt.status !==
+            "in-progress" ||
+          !displayQuestion ||
+          isSubmitted ||
+          isSubmittingAnswer
+        ) {
+          return null;
+        }
+
+        if (!selectedOptionId) {
+          setFeedback(
+            "empty",
+          );
+
+          return null;
+        }
+
+        try {
+          setIsSubmittingAnswer(
+            true,
+          );
+
+          setError(
+            null,
+          );
+
+          const result =
+            await courseApi.submitFinalTestAnswer(
+              {
+                attemptId:
+                  attempt.attemptId,
+
+                questionId:
+                  displayQuestion.id,
+
+                selectedOptionId,
+              },
+            );
+
+          const nextAttempt =
+            result.attempt;
+
+          /*
+           * Counts, remaining mistakes and
+           * status now come exclusively from
+           * the backend.
+           */
+          setAttempt(
+            nextAttempt,
+          );
+
           if (
-            currentState.result !==
-              "in-progress" ||
-            currentState
-              .isSubmitted
+            nextAttempt.status ===
+            "in-progress"
           ) {
-            return currentState;
-          }
-
-          const question =
-            currentState.questions[
-              currentState
-                .currentQuestionIndex
-            ];
-
-          if (!question) {
-            return currentState;
-          }
-
-          if (
-            !currentState
-              .selectedOptionId
-          ) {
-            return {
-              ...currentState,
-              feedback: "empty",
-            };
-          }
-
-          const isCorrect =
-            currentState
-              .selectedOptionId ===
-            question.correctOptionId;
-
-          const nextCorrectCount =
-            currentState
-              .correctCount +
-            (isCorrect ? 1 : 0);
-
-          const nextWrongCount =
-            currentState
-              .wrongCount +
-            (isCorrect ? 0 : 1);
-
-          const hasExceededMistakes =
-            nextWrongCount >
-            allowedMistakes;
-
-          const isFinalQuestion =
-            currentState
-              .currentQuestionIndex ===
-            currentState
-              .questions.length -
-              1;
-
-          const nextResult:
-            FinalTestResult =
-            hasExceededMistakes
-              ? "failed"
-              : isFinalQuestion
-                ? "passed"
-                : "in-progress";
-
-          return {
-            ...currentState,
-
-            feedback: isCorrect
+            /*
+             * Do not replace displayQuestion
+             * yet. The server has already
+             * advanced, but the UI must first
+             * show feedback for the question
+             * that was just answered.
+             */
+            setFeedback(
+              result.correct
                 ? "correct"
                 : "incorrect",
+            );
 
-            isSubmitted: true,
+            return nextAttempt;
+          }
 
-            correctCount:
-              nextCorrectCount,
+          /*
+           * PASSED / FAILED:
+           * the result screen replaces the
+           * question immediately.
+           */
+          setDisplayQuestion(
+            null,
+          );
 
-            wrongCount:
-              nextWrongCount,
+          setDisplayQuestionNumber(
+            nextAttempt.currentQuestionNumber,
+          );
 
-            result: nextResult,
-          };
-        },
-      );
-    }, [allowedMistakes]);
+          setFeedback(
+            result.correct
+              ? "correct"
+              : "incorrect",
+          );
+
+          return nextAttempt;
+        } catch (submitError) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : "Failed to submit answer.",
+          );
+
+          return null;
+        } finally {
+          setIsSubmittingAnswer(
+            false,
+          );
+        }
+      },
+      [
+        attempt,
+        displayQuestion,
+        isSubmitted,
+        isSubmittingAnswer,
+        selectedOptionId,
+      ],
+    );
 
   const goToNextQuestion =
     useCallback(() => {
-      setState(
-        (currentState) => {
-          if (
-            currentState.result !==
-              "in-progress" ||
-            !currentState
-              .isSubmitted ||
-            currentState
-              .currentQuestionIndex >=
-              currentState
-                .questions.length -
-                1
-          ) {
-            return currentState;
-          }
+      if (
+        !attempt ||
+        attempt.status !==
+          "in-progress" ||
+        !isSubmitted ||
+        !attempt.currentQuestion
+      ) {
+        return;
+      }
 
-          return {
-            ...currentState,
-
-            currentQuestionIndex:
-              currentState
-                .currentQuestionIndex +
-              1,
-
-            selectedOptionId: null,
-
-            feedback: "idle",
-            isSubmitted: false,
-          };
-        },
+      /*
+       * attempt.currentQuestion is already
+       * the next persisted server question.
+       */
+      setDisplayQuestion(
+        attempt.currentQuestion,
       );
-    }, []);
+
+      setDisplayQuestionNumber(
+        attempt.currentQuestionNumber,
+      );
+
+      setSelectedOptionId(
+        null,
+      );
+
+      setFeedback(
+        "idle",
+      );
+
+      setError(
+        null,
+      );
+    }, [
+      attempt,
+      isSubmitted,
+    ]);
 
   const retry =
-    useCallback(() => {
-      setState(
-        createInitialState(),
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(
+            true,
+          );
+
+          setError(
+            null,
+          );
+
+          return await startAttempt();
+        } catch (retryError) {
+          setError(
+            retryError instanceof
+              Error
+              ? retryError.message
+              : "Failed to start a new attempt.",
+          );
+
+          return null;
+        } finally {
+          setIsLoading(
+            false,
+          );
+        }
+      },
+      [startAttempt],
+    );
+
+  const selectedOption =
+    useMemo(() => {
+      if (
+        !displayQuestion ||
+        !selectedOptionId
+      ) {
+        return null;
+      }
+
+      return (
+        displayQuestion.options.find(
+          (option) =>
+            option.id ===
+            selectedOptionId,
+        ) ?? null
       );
-    }, [createInitialState]);
+    }, [
+      displayQuestion,
+      selectedOptionId,
+    ]);
 
   return {
-    sessionId:
-      state.sessionId,
+    attempt,
 
-    questions:
-      state.questions,
+    currentQuestion:
+      displayQuestion,
 
-    currentQuestion,
-    currentQuestionIndex:
-      state.currentQuestionIndex,
-    currentQuestionNumber,
-    totalQuestions,
+    currentQuestionNumber:
+      displayQuestionNumber,
 
-    selectedOptionId:
-      state.selectedOptionId,
+    selectedOptionId,
     selectedOption,
 
-    feedback:
-      state.feedback,
-    isSubmitted:
-      state.isSubmitted,
-    isLastQuestion,
+    feedback,
+    isSubmitted,
 
     correctCount:
-      state.correctCount,
+      attempt?.correctCount ?? 0,
+
     wrongCount:
-      state.wrongCount,
-    answeredCount,
+      attempt?.wrongCount ?? 0,
 
-    allowedMistakes,
-    remainingMistakes,
+    answeredCount:
+      attempt?.answeredCount ?? 0,
 
-    accuracyPercentage,
+    totalQuestions:
+      attempt?.totalQuestions ?? 0,
+
+    allowedMistakes:
+      attempt?.allowedMistakes ?? 0,
+
+    remainingMistakes:
+      attempt?.remainingMistakes ?? 0,
+
+    accuracyPercentage:
+      attempt?.accuracyPercentage ?? 0,
+
+    scorePercentage:
+      attempt?.scorePercentage ?? 0,
 
     result:
-      state.result,
+      attempt?.status ??
+      "in-progress",
+
+    isLoading,
+    isSubmittingAnswer,
+    error,
 
     selectOption,
     submitAnswer,

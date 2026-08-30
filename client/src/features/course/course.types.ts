@@ -81,7 +81,6 @@ export type CourseFinalTestStepDefinition =
   CourseStepBaseDefinition & {
     id: CourseFinalTestId;
     type: "final-test";
-    allowedMistakes: number;
   };
 
 export type CourseStepDefinition =
@@ -164,22 +163,9 @@ export type CourseQuestionOption = {
 
 export type CourseQuestion = {
   id: string;
-  sectionId: TheorySectionId;
-  lessonId: TheoryLessonId;
-
   prompt: string;
-
   options:
     readonly CourseQuestionOption[];
-
-  correctOptionId: string;
-
-  /**
-   * Displayed only in formative lesson
-   * quizzes. It is not shown during
-   * final tests.
-   */
-  explanation: string;
 };
 
 export type LessonQuizFeedback =
@@ -194,10 +180,6 @@ export type FinalTestFeedback =
   | "correct"
   | "incorrect";
 
-export type FinalTestResult =
-  | "in-progress"
-  | "passed"
-  | "failed";
 
 export type FinalTestAttempt = {
   id: string;
@@ -207,7 +189,9 @@ export type FinalTestAttempt = {
   correctCount: number;
   wrongCount: number;
   totalQuestions: number;
+
   accuracyPercentage: number;
+  scorePercentage: number;
 
   passed: boolean;
   completedAt: string;

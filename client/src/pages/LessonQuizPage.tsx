@@ -29,7 +29,6 @@ import {
 } from "../features/course/course.routes";
 
 import type {
-  CourseQuestion,
   CourseStepDefinition,
 } from "../features/course/course.types";
 
@@ -37,9 +36,6 @@ import {
   courseDefinition,
 } from "../features/course/data/courseDefinition";
 
-import {
-  getLessonQuizQuestions,
-} from "../features/course/data/questions";
 
 import {
   useCourseProgress,
@@ -49,12 +45,7 @@ import {
   useLessonQuizSession,
 } from "../features/course/hooks/useLessonQuizSession";
 
-import {
-  buildCourseOverview,
-} from "../features/course/utils/buildCourseOverview";
 
-const emptyQuestions:
-  readonly CourseQuestion[] = [];
 
 const LessonQuizPage = () => {
   const navigate =
@@ -74,18 +65,10 @@ const LessonQuizPage = () => {
   }>();
 
   const {
-    progress,
-    completeQuiz,
+    replaceProgress,
   } = useCourseProgress();
 
-  const overview = useMemo(
-    () =>
-      buildCourseOverview(
-        courseDefinition,
-        progress,
-      ),
-    [progress],
-  );
+
 
   const sectionDefinition =
     useMemo(() => {
@@ -156,55 +139,7 @@ const LessonQuizPage = () => {
       sectionDefinition,
     ]);
 
-  const sectionView =
-    useMemo(() => {
-      if (!sectionId) {
-        return null;
-      }
 
-      return (
-        overview.sections.find(
-          (section) =>
-            section.id ===
-            sectionId,
-        ) ?? null
-      );
-    }, [
-      overview.sections,
-      sectionId,
-    ]);
-
-  const quizStepView =
-    useMemo(() => {
-      if (
-        !sectionView ||
-        !quizStep
-      ) {
-        return null;
-      }
-
-      return (
-        sectionView.steps.find(
-          (step) =>
-            step.id ===
-            quizStep.id,
-        ) ?? null
-      );
-    }, [
-      quizStep,
-      sectionView,
-    ]);
-
-  const questions =
-    useMemo(() => {
-      if (!quizStep) {
-        return emptyQuestions;
-      }
-
-      return getLessonQuizQuestions(
-        quizStep.lessonId,
-      );
-    }, [quizStep]);
 
   const nextStep =
     useMemo<CourseStepDefinition | null>(
@@ -249,30 +184,47 @@ const LessonQuizPage = () => {
         quizStep?.id ??
         "unavailable-quiz",
 
-      questions,
+      enabled:
+        Boolean(
+          quizStep &&
+          lessonStep,
+        ),
     });
 
   const {
+    questions,
+
     currentQuestion,
     currentQuestionNumber,
     totalQuestions,
 
     selectedOptionId,
+
+    correctOptionId,
+    explanation,
+
     feedback,
+
     isSubmitted,
     isLastQuestion,
+
+    isLoading,
+    isSubmittingAnswer,
+    isCompletingQuiz,
+    error,
 
     selectOption,
     submitAnswer,
     goToNextQuestion,
+
+    completeQuiz:
+      completeQuizOnServer,
   } = quizSession;
 
   if (
     !sectionDefinition ||
     !quizStep ||
-    !lessonStep ||
-    !sectionView ||
-    !quizStepView
+    !lessonStep
   ) {
     return (
       <Navigate
@@ -282,17 +234,14 @@ const LessonQuizPage = () => {
     );
   }
 
-  if (
-    quizStepView.status ===
-    "locked"
-  ) {
+  if (isLoading) {
     return (
-      <Navigate
-        to={ROUTES.courses}
-        replace
-      />
+      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
+        Loading quiz...
+      </div>
     );
   }
+
 
   if (
     questions.length === 0 ||
@@ -324,7 +273,7 @@ const LessonQuizPage = () => {
     };
 
   const continueFromQuestion =
-    () => {
+   async () => {
       if (!isSubmitted) {
         return;
       }
@@ -341,9 +290,16 @@ const LessonQuizPage = () => {
         return;
       }
 
-      completeQuiz(
-        quizStep.id,
-      );
+      try {
+        const nextProgress =
+          await completeQuizOnServer();
+
+        replaceProgress(
+          nextProgress,
+        );
+      } catch {
+        return;
+      }
 
       if (nextStep) {
         navigate(
@@ -401,36 +357,68 @@ const LessonQuizPage = () => {
       <div className="mt-6">
         <AssessmentQuestionCard
           key={currentQuestion.id}
+
           eyebrow={`${lessonStep.title} · Learning Quiz`}
+
           currentQuestionNumber={
             currentQuestionNumber
           }
+
           totalQuestions={
             totalQuestions
           }
+
           question={
             currentQuestion
           }
+
           selectedOptionId={
             selectedOptionId
           }
+
+          correctOptionId={
+            correctOptionId
+          }
+
+          explanation={
+            explanation
+          }
+
           feedback={feedback}
+
           isLastQuestion={
             isLastQuestion
           }
+
+          isSubmittingAnswer={
+            isSubmittingAnswer
+          }
+
+          isContinuing={
+            isCompletingQuiz
+          }
+
           onSelectOption={
             selectOption
           }
+
           onSubmitAnswer={() => {
-            submitAnswer();
+            void submitAnswer();
           }}
-          onContinue={
-            continueFromQuestion
-          }
+
+          onContinue={() => {
+            void continueFromQuestion();
+          }}
+
           finalActionLabel={
             finalActionLabel
           }
         />
+        {error ? (
+          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );
