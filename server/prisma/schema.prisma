@@ -1,0 +1,572 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum CourseStepType {
+  LESSON
+  QUIZ
+  FINAL_TEST
+}
+
+enum FinalTestAttemptStatus {
+  IN_PROGRESS
+  PASSED
+  FAILED
+}
+
+enum AssessmentMethod {
+  A
+  B
+}
+
+enum BuildingType {
+  RESIDENTIAL
+  NON_RESIDENTIAL
+}
+
+enum BuildingUsage {
+  SINGLE_FAMILY_HOUSE
+  SMALL_MULTI_FAMILY_HOUSE
+  LARGE_MULTI_FAMILY_HOUSE
+  RESIDENTIAL_OTHER
+  OFFICE
+  EDUCATIONAL_BUILDINGS
+  HEALTHCARE
+  NON_RESIDENTIAL_OTHER
+}
+
+enum BuildingState {
+  ORIGINAL
+  RENOVATED
+}
+
+enum ClimateZone {
+  NORTHERN_EUROPE
+  WESTERN_EUROPE
+  SOUTHERN_EUROPE
+  NORTH_EASTERN_EUROPE
+  SOUTH_EASTERN_EUROPE
+}
+
+enum DomainPresence {
+  PRESENT
+  ABSENT_MANDATORY
+  ABSENT_NOT_MANDATORY
+}
+
+enum CaseStudyMode {
+  BASELINE
+  IMPROVEMENT
+}
+
+enum CaseStudyRouteStage {
+  SETUP
+  ASSESSMENT
+  RESULTS
+  GUIDED_IMPROVEMENT_ANALYSIS
+  SIMULATION_RESULTS
+}
+
+// -----------------------------------------------------------------------------
+// Users / authentication
+// -----------------------------------------------------------------------------
+
+model User {
+  id        String @id @default(cuid())
+  email     String @unique
+  password  String
+  firstName String
+  lastName  String
+  language  String @default("en")
+
+  completedCourseSteps UserCompletedCourseStep[]
+  finalTestAttempts    FinalTestAttempt[]
+  caseStudyProgress    UserCaseStudyProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// Course progression registry
+//
+// The detailed Theory content and display metadata remain in the frontend.
+// These models define only the canonical progression structure used by the
+// backend for progress, locking and assessment access.
+// -----------------------------------------------------------------------------
+
+model Course {
+  id String @id
+
+  sections CourseSection[]
+}
+
+model CourseSection {
+  id       String @id
+  courseId String
+  order    Int
+
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  steps     CourseStep[]
+  questions CourseQuestion[]
+
+  @@unique([courseId, order])
+}
+
+model CourseStep {
+  id        String         @id
+  sectionId String
+  type      CourseStepType
+  order     Int
+
+  // Stable Theory lesson key. Present for LESSON and QUIZ steps.
+  // FINAL_TEST steps do not point to one lesson; they use the section pool.
+  theoryLessonKey String?
+
+  section CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  completions       UserCompletedCourseStep[]
+  finalTestAttempts FinalTestAttempt[]
+
+  @@unique([sectionId, order])
+  @@index([sectionId, type])
+  @@index([theoryLessonKey])
+}
+
+// -----------------------------------------------------------------------------
+// Course question bank
+//
+// Correct answers and explanations live on the server. The public API should
+// not return them before validation.
+// -----------------------------------------------------------------------------
+
+model CourseQuestion {
+  id               String @id
+  sectionId        String
+  theoryLessonKey  String
+  prompt           String
+  correctOptionKey String
+  explanation      String
+  order            Int
+
+  section              CourseSection              @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  options              CourseQuestionOption[]
+  finalTestAssignments FinalTestAttemptQuestion[]
+
+  @@unique([theoryLessonKey, order])
+  @@index([sectionId])
+  @@index([theoryLessonKey])
+}
+
+model CourseQuestionOption {
+  id         String @id @default(cuid())
+  questionId String
+  key        String
+  text       String
+  order      Int
+
+  question CourseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, key])
+  @@unique([questionId, order])
+}
+
+// -----------------------------------------------------------------------------
+// Course progress
+// -----------------------------------------------------------------------------
+
+model UserCompletedCourseStep {
+  userId      String
+  stepId      String
+  completedAt DateTime @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step CourseStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@id([userId, stepId])
+  @@index([stepId])
+}
+
+// Final tests are persisted from the moment they start so the server can own
+// the per-question validation state. Section completion and achievements are
+// derived from a PASSED attempt; they are not stored separately.
+model FinalTestAttempt {
+  id              String                 @id @default(cuid())
+  userId          String
+  finalTestStepId String
+  status          FinalTestAttemptStatus @default(IN_PROGRESS)
+
+  // Snapshot of the rule at attempt start. The CourseStep itself does not
+  // store a duplicated allowedMistakes value.
+  allowedMistakes Int
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  finalTestStep CourseStep                 @relation(fields: [finalTestStepId], references: [id], onDelete: Cascade)
+  questions     FinalTestAttemptQuestion[]
+
+  @@index([userId, finalTestStepId, startedAt])
+  @@index([status])
+}
+
+// Persists the exact shuffled question/option order and the submitted answer.
+// optionOrder contains the question-scoped option keys (e.g. option-a).
+model FinalTestAttemptQuestion {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+  position   Int
+
+  optionOrder       String[]
+  selectedOptionKey String?
+  isCorrect         Boolean?
+  answeredAt        DateTime?
+
+  attempt  FinalTestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question CourseQuestion   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@unique([attemptId, questionId])
+  @@unique([attemptId, position])
+  @@index([questionId])
+}
+
+// -----------------------------------------------------------------------------
+// Canonical SRI reference methodology
+// -----------------------------------------------------------------------------
+
+model SriKeyFunctionality {
+  id    String @id
+  name  String @unique
+  order Int
+
+  impactCriteria SriImpactCriterion[]
+}
+
+model SriImpactCriterion {
+  id                 String @id
+  name               String @unique
+  order              Int
+  overallWeight      Float
+  keyFunctionalityId String
+
+  keyFunctionality SriKeyFunctionality @relation(fields: [keyFunctionalityId], references: [id], onDelete: Restrict)
+  impactScores     SriImpactScore[]
+  domainWeights    SriDomainWeight[]
+
+  @@index([keyFunctionalityId])
+}
+
+model SriTechnicalDomain {
+  id    String @id
+  name  String @unique
+  order Int
+
+  services                  SriService[]
+  domainWeights             SriDomainWeight[]
+  expectedCaseStudyPresence CaseStudyExpectedDomainPresence[]
+  attemptDomainPresence     CaseStudyAttemptDomainPresence[]
+}
+
+model SriCountry {
+  id          String      @id
+  name        String      @unique
+  climateZone ClimateZone
+
+  caseStudies CaseStudy[]
+  attempts    CaseStudyAttempt[]
+
+  @@index([climateZone])
+}
+
+// Stable service identity (e.g. h-1c / H-1c) and its technical domain.
+// Method-dependent definitions are stored in SriServiceMethod.
+model SriService {
+  id       String @id
+  code     String @unique
+  domainId String
+
+  domain            SriTechnicalDomain @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  methodDefinitions SriServiceMethod[]
+
+  @@index([domainId])
+}
+
+// Resolved definition for one official assessment method. This intentionally
+// stores the final Method A / Method B form rather than frontend-style
+// "Method B base + Method A overrides" logic.
+model SriServiceMethod {
+  id        String           @id @default(cuid())
+  serviceId String
+  method    AssessmentMethod
+
+  serviceGroup      String
+  smartReadyService String
+
+  // Calculation-relevant triage value from the current canonical catalogue.
+  triageValue Int
+
+  // Optional canonical/reference metadata. Pure presentation helpers such as
+  // shortTitle, learningExplanation and assessmentHint remain in the frontend.
+  officialDescription String?
+  triageNote          String?
+  applicabilityNote   String?
+  methodologyNote     String?
+
+  service SriService              @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  levels  SriFunctionalityLevel[]
+
+  caseStudySelections CaseStudySelectedService[]
+
+  @@unique([serviceId, method])
+  @@index([method])
+}
+
+// IDs are database-generated because the same frontend source key can exist in
+// both methods with different meanings (e.g. h-1c-level-0).
+model SriFunctionalityLevel {
+  id                  String @id @default(cuid())
+  serviceMethodId     String
+  level               Int
+  sourceLevelKey      String
+  officialDescription String
+
+  serviceMethod SriServiceMethod @relation(fields: [serviceMethodId], references: [id], onDelete: Cascade)
+  impactScores  SriImpactScore[]
+
+  expectedPrimaryFor    CaseStudySelectedService[]      @relation("ExpectedPrimaryLevel")
+  expectedAdditionalFor CaseStudySelectedService[]      @relation("ExpectedAdditionalLevel")
+  selectedPrimaryIn     CaseStudyAttemptServiceAnswer[] @relation("SelectedPrimaryLevel")
+  selectedAdditionalIn  CaseStudyAttemptServiceAnswer[] @relation("SelectedAdditionalLevel")
+
+  @@unique([serviceMethodId, level])
+  @@unique([serviceMethodId, sourceLevelKey])
+  @@index([sourceLevelKey])
+}
+
+model SriImpactScore {
+  levelId           String
+  impactCriterionId String
+  score             Float
+
+  level           SriFunctionalityLevel @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  impactCriterion SriImpactCriterion    @relation(fields: [impactCriterionId], references: [id], onDelete: Restrict)
+
+  @@id([levelId, impactCriterionId])
+  @@index([impactCriterionId])
+}
+
+// Store the fully resolved effective matrix for each method. This removes the
+// need for Method A special-case weighting code in the server calculation.
+model SriDomainWeight {
+  method            AssessmentMethod
+  buildingType      BuildingType
+  climateZone       ClimateZone
+  domainId          String
+  impactCriterionId String
+  weight            Float
+
+  domain          SriTechnicalDomain @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  impactCriterion SriImpactCriterion @relation(fields: [impactCriterionId], references: [id], onDelete: Restrict)
+
+  @@id([method, buildingType, climateZone, domainId, impactCriterionId])
+  @@index([domainId, impactCriterionId])
+}
+
+// -----------------------------------------------------------------------------
+// Case Study definition
+// -----------------------------------------------------------------------------
+
+model CaseStudy {
+  id          String        @id
+  order       Int
+  title       String
+  description String
+  mode        CaseStudyMode @default(BASELINE)
+
+  // Narrative/descriptive sections used by the UI.
+  scenario Json
+
+  // Canonical building facts.
+  buildingType     BuildingType
+  buildingUsage    BuildingUsage
+  locationLabel    String
+  countryId        String
+  floorArea        Float
+  constructionYear Int
+  buildingState    BuildingState
+  renovationYear   Int?
+
+  // Expected assessment choice; building facts themselves are not duplicated
+  // as separate expected-answer fields.
+  expectedAssessmentMethod AssessmentMethod
+
+  country SriCountry @relation(fields: [countryId], references: [id], onDelete: Restrict)
+
+  expectedDomainPresence CaseStudyExpectedDomainPresence[]
+  selectedServices       CaseStudySelectedService[]
+  userProgress           UserCaseStudyProgress[]
+
+  @@unique([order])
+  @@index([countryId])
+}
+
+model CaseStudyExpectedDomainPresence {
+  caseStudyId String
+  domainId    String
+  status      DomainPresence
+
+  caseStudy CaseStudy          @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  domain    SriTechnicalDomain @relation(fields: [domainId], references: [id], onDelete: Restrict)
+
+  @@id([caseStudyId, domainId])
+}
+
+// The scenario references the resolved method-specific service definition.
+// Expected levels therefore point to method-scoped functionality-level rows.
+model CaseStudySelectedService {
+  id              String @id @default(cuid())
+  caseStudyId     String
+  serviceMethodId String
+  order           Int
+
+  scenarioEvidence String[]
+
+  expectedPrimaryLevelId    String
+  expectedShare             Float
+  expectedAdditionalLevelId String?
+
+  caseStudy     CaseStudy        @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  serviceMethod SriServiceMethod @relation(fields: [serviceMethodId], references: [id], onDelete: Restrict)
+
+  expectedPrimaryLevel    SriFunctionalityLevel  @relation("ExpectedPrimaryLevel", fields: [expectedPrimaryLevelId], references: [id], onDelete: Restrict)
+  expectedAdditionalLevel SriFunctionalityLevel? @relation("ExpectedAdditionalLevel", fields: [expectedAdditionalLevelId], references: [id], onDelete: Restrict)
+
+  attemptAnswers   CaseStudyAttemptServiceAnswer[]
+  activeInAttempts CaseStudyAttempt[]              @relation("ActiveScenarioService")
+
+  @@unique([caseStudyId, serviceMethodId])
+  @@unique([caseStudyId, order])
+  @@index([serviceMethodId])
+}
+
+// -----------------------------------------------------------------------------
+// Case Study user progress / attempts
+// -----------------------------------------------------------------------------
+
+model UserCaseStudyProgress {
+  id          String @id @default(cuid())
+  userId      String
+  caseStudyId String
+
+  // The first successfully completed attempt becomes official and is never
+  // replaced by Practice Again. activeAttemptId may later point elsewhere.
+  officialAttemptId String? @unique
+  activeAttemptId   String? @unique
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseStudy CaseStudy @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+
+  attempts        CaseStudyAttempt[] @relation("ProgressAttempts")
+  officialAttempt CaseStudyAttempt?  @relation("OfficialAttempt", fields: [officialAttemptId], references: [id], onDelete: SetNull)
+  activeAttempt   CaseStudyAttempt?  @relation("ActiveAttempt", fields: [activeAttemptId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, caseStudyId])
+  @@index([caseStudyId])
+}
+
+model CaseStudyAttempt {
+  id         String @id @default(cuid())
+  progressId String
+
+  lastVisitedStage CaseStudyRouteStage?
+
+  // Setup draft / input state. Missing values remain NULL until selected.
+  buildingType     BuildingType?
+  buildingUsage    BuildingUsage?
+  countryId        String?
+  floorArea        Float?
+  constructionYear Int?
+  buildingState    BuildingState?
+  renovationYear   Int?
+  assessmentMethod AssessmentMethod?
+  setupCompleted   Boolean           @default(false)
+
+  // Assessment state.
+  assessmentCompleted     Boolean @default(false)
+  activeScenarioServiceId String?
+
+  // Derived result snapshots.
+  baselineResult   Json?
+  simulationResult Json?
+
+  // Persistent interaction/progress state for the two intermediate stages.
+  resultsInvestigation Json?
+  guidedImprovement    Json?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  progress UserCaseStudyProgress @relation("ProgressAttempts", fields: [progressId], references: [id], onDelete: Cascade)
+  country  SriCountry?           @relation(fields: [countryId], references: [id], onDelete: SetNull)
+
+  activeScenarioService CaseStudySelectedService? @relation("ActiveScenarioService", fields: [activeScenarioServiceId], references: [id], onDelete: SetNull)
+
+  domainPresence CaseStudyAttemptDomainPresence[]
+  serviceAnswers CaseStudyAttemptServiceAnswer[]
+
+  officialForProgress UserCaseStudyProgress? @relation("OfficialAttempt")
+  activeForProgress   UserCaseStudyProgress? @relation("ActiveAttempt")
+
+  @@index([progressId, startedAt])
+  @@index([countryId])
+  @@index([activeScenarioServiceId])
+}
+
+model CaseStudyAttemptDomainPresence {
+  attemptId String
+  domainId  String
+  status    DomainPresence
+
+  attempt CaseStudyAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  domain  SriTechnicalDomain @relation(fields: [domainId], references: [id], onDelete: Restrict)
+
+  @@id([attemptId, domainId])
+  @@index([domainId])
+}
+
+model CaseStudyAttemptServiceAnswer {
+  id                String @id @default(cuid())
+  attemptId         String
+  scenarioServiceId String
+
+  primaryLevelId    String
+  share             Float   @default(100)
+  additionalLevelId String?
+
+  validated Boolean @default(false)
+
+  attempt         CaseStudyAttempt         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  scenarioService CaseStudySelectedService @relation(fields: [scenarioServiceId], references: [id], onDelete: Restrict)
+
+  primaryLevel    SriFunctionalityLevel  @relation("SelectedPrimaryLevel", fields: [primaryLevelId], references: [id], onDelete: Restrict)
+  additionalLevel SriFunctionalityLevel? @relation("SelectedAdditionalLevel", fields: [additionalLevelId], references: [id], onDelete: Restrict)
+
+  @@unique([attemptId, scenarioServiceId])
+  @@index([scenarioServiceId])
+  @@index([primaryLevelId])
+  @@index([additionalLevelId])
+}

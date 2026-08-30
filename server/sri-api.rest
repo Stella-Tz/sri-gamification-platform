@@ -1,0 +1,36 @@
+### Health check
+GET http://localhost:5000/api/health
+
+
+
+### Register user
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "maria@test.com",
+  "password": "123456",
+  "firstName": "Maria",
+  "fullName": "Maria K."
+}
+
+
+
+### Login user
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "maria@test.com",
+  "password": "123456"
+}
+
+
+### Get current user
+GET http://localhost:5000/api/auth/me
+
+
+### Get course progress
+GET http://localhost:5000/api/course/progress
+
+### Reset progress

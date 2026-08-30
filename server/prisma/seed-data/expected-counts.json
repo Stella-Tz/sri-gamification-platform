@@ -1,0 +1,23 @@
+{
+  "sections": 11,
+  "lessons": 47,
+  "steps": 105,
+  "questions": 171,
+  "options": 684,
+  "domains": 9,
+  "impactCriteria": 7,
+  "keyFunctionalities": 3,
+  "countries": 32,
+  "services": 54,
+  "serviceMethods": 81,
+  "methodAServiceMethods": 27,
+  "methodBServiceMethods": 54,
+  "methodALevels": 115,
+  "methodBLevels": 228,
+  "levels": 343,
+  "impactScores": 2401,
+  "domainWeights": 1260,
+  "caseStudies": 1,
+  "selectedServices": 24,
+  "expectedDomainPresence": 9
+}
