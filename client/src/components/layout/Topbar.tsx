@@ -20,6 +20,8 @@ import { useAuth } from "../../app/providers/AuthProvider";
 import { routeMeta } from "../../app/routes/routeMeta";
 import { ROUTES } from "../../constants/routes";
 
+import AppLogo from "../ui/AppLogo";
+
 const navItems = [
   {
     label: "Dashboard",
@@ -295,17 +297,13 @@ const Topbar = () => {
               shadow-2xl
             "
           >
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-base font-extrabold text-slate-900">
-                SRI Smart Tool
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <AppLogo variant="sidebar" />
 
               <button
                 type="button"
                 onClick={() =>
-                  setIsMenuOpen(
-                    false,
-                  )
+                  setIsMenuOpen(false)
                 }
                 className="
                   flex

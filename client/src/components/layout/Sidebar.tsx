@@ -6,6 +6,8 @@ import { useAuth } from "../../app/providers/AuthProvider";
 
 import { ROUTES } from "../../constants/routes";
 
+import AppLogo from "../ui/AppLogo";
+
 const navItems = [
   {
     label: "Dashboard",
@@ -72,11 +74,7 @@ const Sidebar = () => {
       "
     >
       <div className="mb-6">
-        <p className="text-xl font-extrabold leading-tight text-slate-900">
-          SRI Smart
-          <br />
-          Tool
-        </p>
+        <AppLogo variant="sidebar" />
       </div>
 
       {user ? (

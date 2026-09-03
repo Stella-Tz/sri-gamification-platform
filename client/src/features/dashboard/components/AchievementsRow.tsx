@@ -271,9 +271,7 @@ const AchievementsRow = ({
   }, [updateScrollButtons]);
 
   const scrollAchievements = (
-    direction:
-      | "left"
-      | "right",
+    direction: "left" | "right",
   ) => {
     const container =
       scrollContainerRef.current;
@@ -282,16 +280,37 @@ const AchievementsRow = ({
       return;
     }
 
+    const row =
+      container.firstElementChild as
+        | HTMLElement
+        | null;
+
+    const firstAchievement =
+      row?.firstElementChild as
+        | HTMLElement
+        | null;
+
+    if (!row || !firstAchievement) {
+      return;
+    }
+
+    const rowStyles =
+      window.getComputedStyle(row);
+
+    const gap =
+      Number.parseFloat(
+        rowStyles.columnGap,
+      ) || 0;
+
     const scrollDistance =
-      container.clientWidth *
-      0.5;
+      firstAchievement.offsetWidth +
+      gap;
 
     container.scrollBy({
       left:
         direction === "right"
           ? scrollDistance
           : -scrollDistance,
-
       behavior: "smooth",
     });
   };
@@ -357,7 +376,7 @@ const AchievementsRow = ({
                 ? "visible"
                 : "hidden"
             }
-            className="flex min-w-0 gap-5 py-3"
+            className="flex w-max gap-5 py-3"
           >
             {achievements.map(
               (
@@ -396,7 +415,15 @@ const AchievementsRow = ({
                     variants={
                       fadeUp
                     }
-                    className="relative flex w-[calc((100%-1.25rem)/2)] shrink-0 flex-col items-center text-center sm:w-[calc((100%-2.5rem)/3)] md:w-[calc((100%-3.75rem)/4)] lg:w-[calc((100%-5rem)/5)] xl:w-[calc((100%-6.25rem)/6)]"
+                    className="
+                      relative
+                      flex
+                      w-[140px]
+                      shrink-0
+                      flex-col
+                      items-center
+                      text-center
+                    "
                   >
                     <div
                       className={`

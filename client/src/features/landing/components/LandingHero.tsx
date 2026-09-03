@@ -1,7 +1,7 @@
 // client/src/features/landing/components/LandingHero.tsx
 
-import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import ForwardArrowIcon from "../../../components/ui/ForwardArrowIcon";
+import PrimaryLink from "../../../components/ui/PrimaryLink";
 
 import landingSmartBuildingImage from "../../../assets/landing/landing_smart_building.png";
 import { ROUTES } from "../../../constants/routes";
@@ -92,29 +92,14 @@ const LandingHero = () => {
           </p>
 
           <div className="mt-8">
-            <Link
+            <PrimaryLink
               to={ROUTES.login}
-              className="
-                inline-flex
-                items-center
-                justify-center
-                gap-3
-                rounded-xl
-                bg-blue-600
-                px-6
-                py-4
-                text-base
-                font-bold
-                text-white
-                shadow-sm
-                transition
-                hover:bg-blue-700
-              "
+              size="large"
+              className="group gap-3"
             >
               Start Learning
-
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
-            </Link>
+              <ForwardArrowIcon size={20} />
+            </PrimaryLink>
           </div>
         </div>
 

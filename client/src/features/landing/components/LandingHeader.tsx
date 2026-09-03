@@ -1,8 +1,9 @@
 // client/src/features/landing/components/LandingHeader.tsx
 
-import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import AppLogo from "../../../components/ui/AppLogo";
+import PrimaryLink from "../../../components/ui/PrimaryLink";
 import { ROUTES } from "../../../constants/routes";
 
 const LandingHeader = () => {
@@ -19,49 +20,34 @@ const LandingHeader = () => {
     >
       <div
         className="
-          mx-auto
           flex
           h-20
-          max-w-7xl
+          w-full
           items-center
           justify-between
-          px-4
+          px-3
           sm:px-6
-          lg:px-8
+          lg:px-10
+          xl:px-12
+          2xl:px-16
         "
       >
         <Link
           to={ROUTES.landing}
-          className="inline-flex items-center gap-3 text-blue-950"
+          aria-label="SRI Smart Tool home"
+          className="
+            inline-flex
+            min-w-0
+            items-center
+            focus-visible:outline-none
+            focus-visible:ring-4
+            focus-visible:ring-blue-100
+          "
         >
-          <div
-            className="
-              flex
-              h-11
-              w-11
-              items-center
-              justify-center
-              rounded-2xl
-              border
-              border-blue-200/70
-              bg-white/20
-              text-blue-700
-              backdrop-blur-md
-            "
-          >
-            <Building2
-              className="h-6 w-6"
-              strokeWidth={2.2}
-              aria-hidden="true"
-            />
-          </div>
-
-          <span className="text-xl font-extrabold tracking-tight">
-            SRI Smart Tool
-          </span>
+          <AppLogo variant="topbar" />
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <Link
             to={ROUTES.login}
             className="
@@ -73,7 +59,7 @@ const LandingHeader = () => {
               border
               border-blue-300/70
               bg-white/15
-              px-5
+              px-3
               text-sm
               font-bold
               text-blue-900
@@ -81,31 +67,18 @@ const LandingHeader = () => {
               transition
               hover:border-blue-400
               hover:bg-white/35
+              focus-visible:outline-none
+              focus-visible:ring-4
+              focus-visible:ring-blue-100
+              sm:px-5
             "
           >
             Log in
           </Link>
 
-          <Link
-            to={ROUTES.register}
-            className="
-              inline-flex
-              h-11
-              items-center
-              justify-center
-              rounded-xl
-              bg-blue-600
-              px-5
-              text-sm
-              font-bold
-              text-white
-              shadow-sm
-              transition
-              hover:bg-blue-700
-            "
-          >
+          <PrimaryLink to={ROUTES.register}>
             Sign up
-          </Link>
+          </PrimaryLink>
         </div>
       </div>
     </header>

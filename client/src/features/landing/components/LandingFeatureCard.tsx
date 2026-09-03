@@ -43,7 +43,6 @@ const LandingFeatureCard = ({ feature }: Props) => {
         pt-14
         text-center
         shadow-sm
-        backdrop-blur-sm
       "
     >
       <div
