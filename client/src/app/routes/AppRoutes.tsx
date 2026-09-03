@@ -15,6 +15,10 @@ import {
   THEORY_ROUTES,
 } from "../../constants/routes";
 
+import {
+  CourseProgressProvider,
+} from "../providers/CourseProgressProvider";
+
 import CaseStudyPage from "../../pages/CaseStudyPage";
 import CaseStudyAssessmentPage from "../../pages/CaseStudyAssessmentPage";
 import CaseStudyResultsPage from "../../pages/CaseStudyResultsPage";
@@ -70,15 +74,17 @@ const AppRoutes = () => {
         />
 
         <Route
+        element={
+          <ProtectedRoute />
+        }
+      >
+        <Route
           element={
-            <ProtectedRoute />
+            <CourseProgressProvider>
+              <AppLayout />
+            </CourseProgressProvider>
           }
         >
-          <Route
-            element={
-              <AppLayout />
-            }
-          >
             <Route
               path={
                 ROUTES.dashboard

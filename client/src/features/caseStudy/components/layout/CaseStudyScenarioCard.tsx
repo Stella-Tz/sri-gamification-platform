@@ -12,14 +12,14 @@ import {
 
 import officeBuildingImage from "../../../../assets/caseStudy/office-building.png";
 
-import type { CaseStudyDetails } from "../../types/caseStudy.types";
+import type { CaseStudyDefinition } from "../../types/caseStudy.types";
 
 import {
   getBuildingUsageLabel,
 } from "../../data/sriSetupOptions";
 
 type CaseStudyScenarioCardProps = {
-  caseStudy: CaseStudyDetails;
+  caseStudy: CaseStudyDefinition;
 };
 
 const CaseStudyScenarioCard = ({
@@ -30,7 +30,6 @@ const CaseStudyScenarioCard = ({
       .generalBuildingInformation.bullets;
 
   const {
-    buildingType,
     buildingUsage,
     locationLabel,
     constructionYear,
@@ -86,7 +85,6 @@ const CaseStudyScenarioCard = ({
         <InfoPill
           icon={Building2}
           label={getBuildingUsageLabel(
-            buildingType,
             buildingUsage,
           )}
         />

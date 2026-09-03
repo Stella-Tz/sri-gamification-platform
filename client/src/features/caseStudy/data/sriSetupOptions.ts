@@ -11,9 +11,6 @@ import type {
 } from "../types/caseStudy.types";
 
 import { sriSupportedCountries } from "./sriClimateZones";
-import { sriTechnicalDomainNames } from "./sriOfficialConstants";
-
-export { sriTechnicalDomainNames };
 
 export const buildingTypeOptions: SelectOption<BuildingType>[] = [
   {
@@ -155,16 +152,19 @@ export const getClimateZoneLabel = (
 };
 
 export const getBuildingUsageLabel = (
-  buildingType: BuildingType,
   buildingUsage: BuildingUsage,
 ) => {
-  const option =
-    buildingUsageOptionsByType[
-      buildingType
-    ]?.find(
-      (item) =>
-        item.value === buildingUsage,
-    );
+  const option = [
+    ...buildingUsageOptionsByType
+      .residential,
+
+    ...buildingUsageOptionsByType[
+      "non-residential"
+    ],
+  ].find(
+    (item) =>
+      item.value === buildingUsage,
+  );
 
   return option?.label ?? buildingUsage;
 };

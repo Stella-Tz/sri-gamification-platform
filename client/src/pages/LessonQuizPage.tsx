@@ -18,6 +18,8 @@ import {
 
 import PrimaryButton from "../components/ui/PrimaryButton";
 
+import RouteLoadingState from "../components/ui/RouteLoadingState";
+
 import {
   ROUTES,
 } from "../constants/routes";
@@ -36,16 +38,13 @@ import {
   courseDefinition,
 } from "../features/course/data/courseDefinition";
 
-
 import {
   useCourseProgress,
-} from "../features/course/hooks/useCourseProgress";
+} from "../app/providers/CourseProgressProvider";
 
 import {
   useLessonQuizSession,
 } from "../features/course/hooks/useLessonQuizSession";
-
-
 
 const LessonQuizPage = () => {
   const navigate =
@@ -66,9 +65,8 @@ const LessonQuizPage = () => {
 
   const {
     replaceProgress,
-  } = useCourseProgress();
-
-
+  } =
+    useCourseProgress();
 
   const sectionDefinition =
     useMemo(() => {
@@ -139,20 +137,21 @@ const LessonQuizPage = () => {
       sectionDefinition,
     ]);
 
-
-
   const nextStep =
-    useMemo<CourseStepDefinition | null>(
+    useMemo<
+      CourseStepDefinition | null
+    >(
       () => {
         if (!quizStep) {
           return null;
         }
 
         const allSteps =
-          courseDefinition.sections.flatMap(
-            (section) =>
-              section.steps,
-          );
+          courseDefinition.sections
+            .flatMap(
+              (section) =>
+                section.steps,
+            );
 
         const currentStepIndex =
           allSteps.findIndex(
@@ -189,22 +188,28 @@ const LessonQuizPage = () => {
           quizStep &&
           lessonStep,
         ),
+
+      /*
+       * The session hook owns the completion
+       * mutation and applies its canonical
+       * progress result through this stable
+       * provider callback.
+       */
+      onProgressChange:
+        replaceProgress,
     });
 
   const {
     questions,
-
     currentQuestion,
     currentQuestionNumber,
     totalQuestions,
 
     selectedOptionId,
-
     correctOptionId,
     explanation,
 
     feedback,
-
     isSubmitted,
     isLastQuestion,
 
@@ -236,12 +241,11 @@ const LessonQuizPage = () => {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        Loading quiz...
-      </div>
+      <RouteLoadingState
+        label="Loading quiz..."
+      />
     );
   }
-
 
   if (
     questions.length === 0 ||
@@ -273,16 +277,17 @@ const LessonQuizPage = () => {
     };
 
   const continueFromQuestion =
-   async () => {
+    async () => {
       if (!isSubmitted) {
         return;
       }
 
       if (!isLastQuestion) {
         /*
-         * Scroll while the current page-top element
-         * is still mounted. React then updates the
-         * displayed question before the next paint.
+         * Scroll while the current page-top
+         * element is still mounted. React
+         * then updates the displayed question
+         * before the next paint.
          */
         scrollToPageTop();
         goToNextQuestion();
@@ -291,12 +296,12 @@ const LessonQuizPage = () => {
       }
 
       try {
-        const nextProgress =
-          await completeQuizOnServer();
-
-        replaceProgress(
-          nextProgress,
-        );
+        /*
+         * The session hook completes the quiz
+         * and updates shared canonical Course
+         * progress before this navigation.
+         */
+        await completeQuizOnServer();
       } catch {
         return;
       }
@@ -356,64 +361,52 @@ const LessonQuizPage = () => {
 
       <div className="mt-6">
         <AssessmentQuestionCard
-          key={currentQuestion.id}
-
+          key={
+            currentQuestion.id
+          }
           eyebrow={`${lessonStep.title} · Learning Quiz`}
-
           currentQuestionNumber={
             currentQuestionNumber
           }
-
           totalQuestions={
             totalQuestions
           }
-
           question={
             currentQuestion
           }
-
           selectedOptionId={
             selectedOptionId
           }
-
           correctOptionId={
             correctOptionId
           }
-
           explanation={
             explanation
           }
-
           feedback={feedback}
-
           isLastQuestion={
             isLastQuestion
           }
-
           isSubmittingAnswer={
             isSubmittingAnswer
           }
-
           isContinuing={
             isCompletingQuiz
           }
-
           onSelectOption={
             selectOption
           }
-
           onSubmitAnswer={() => {
             void submitAnswer();
           }}
-
           onContinue={() => {
             void continueFromQuestion();
           }}
-
           finalActionLabel={
             finalActionLabel
           }
         />
+
         {error ? (
           <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {error}

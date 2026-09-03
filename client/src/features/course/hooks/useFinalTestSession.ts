@@ -9,35 +9,42 @@ import {
 
 import {
   courseApi,
-  type FinalTestState,
 } from "../../../api/courseApi";
 
 import type {
   CourseQuestion,
   FinalTestFeedback,
+  FinalTestState,
+  UserCourseProgress,
 } from "../course.types";
 
 type UseFinalTestSessionOptions = {
   finalTestId: string;
   enabled?: boolean;
+
+  onProgressChange?: (
+    progress:
+      UserCourseProgress,
+  ) => void;
 };
 
 export const useFinalTestSession = ({
   finalTestId,
   enabled = true,
+  onProgressChange,
 }: UseFinalTestSessionOptions) => {
   const [
     attempt,
     setAttempt,
-  ] = useState<FinalTestState | null>(
-    null,
-  );
+  ] = useState<
+    FinalTestState | null
+  >(null);
 
   /*
    * The backend advances to the next
    * question immediately after an answer.
    *
-   * We keep the answered question visible
+   * Keep the answered question visible
    * temporarily so the user can see the
    * Correct / Incorrect feedback before
    * pressing Next Question.
@@ -128,9 +135,10 @@ export const useFinalTestSession = ({
     useCallback(
       async () => {
         const nextAttempt =
-          await courseApi.startFinalTest(
-            finalTestId,
-          );
+          await courseApi
+            .startFinalTest(
+              finalTestId,
+            );
 
         applyAttempt(
           nextAttempt,
@@ -146,13 +154,33 @@ export const useFinalTestSession = ({
 
   useEffect(() => {
     if (!enabled) {
-      setAttempt(null);
-      setDisplayQuestion(null);
-      setDisplayQuestionNumber(0);
-      setSelectedOptionId(null);
-      setFeedback("idle");
-      setError(null);
-      setIsLoading(false);
+      setAttempt(
+        null,
+      );
+
+      setDisplayQuestion(
+        null,
+      );
+
+      setDisplayQuestionNumber(
+        0,
+      );
+
+      setSelectedOptionId(
+        null,
+      );
+
+      setFeedback(
+        "idle",
+      );
+
+      setError(
+        null,
+      );
+
+      setIsLoading(
+        false,
+      );
 
       return;
     }
@@ -171,9 +199,10 @@ export const useFinalTestSession = ({
           );
 
           const nextAttempt =
-            await courseApi.startFinalTest(
-              finalTestId,
-            );
+            await courseApi
+              .startFinalTest(
+                finalTestId,
+              );
 
           if (cancelled) {
             return;
@@ -187,8 +216,13 @@ export const useFinalTestSession = ({
             return;
           }
 
-          setAttempt(null);
-          setDisplayQuestion(null);
+          setAttempt(
+            null,
+          );
+
+          setDisplayQuestion(
+            null,
+          );
 
           setError(
             loadError instanceof
@@ -286,30 +320,48 @@ export const useFinalTestSession = ({
             null,
           );
 
-          const result =
-            await courseApi.submitFinalTestAnswer(
-              {
-                attemptId:
-                  attempt.attemptId,
+          const submission =
+            await courseApi
+              .submitFinalTestAnswer(
+                {
+                  attemptId:
+                    attempt.attemptId,
 
-                questionId:
-                  displayQuestion.id,
+                  questionId:
+                    displayQuestion.id,
 
-                selectedOptionId,
-              },
-            );
+                  selectedOptionId,
+                },
+              );
+
+          const {
+            result,
+            progress,
+          } = submission;
 
           const nextAttempt =
             result.attempt;
 
           /*
            * Counts, remaining mistakes and
-           * status now come exclusively from
-           * the backend.
+           * status come exclusively from the
+           * backend.
            */
           setAttempt(
             nextAttempt,
           );
+
+          /*
+           * If this answer completed the
+           * final test, the same backend
+           * response contains the new
+           * canonical Course progress.
+           */
+          if (progress) {
+            onProgressChange?.(
+              progress,
+            );
+          }
 
           if (
             nextAttempt.status ===
@@ -371,6 +423,7 @@ export const useFinalTestSession = ({
         displayQuestion,
         isSubmitted,
         isSubmittingAnswer,
+        onProgressChange,
         selectedOptionId,
       ],
     );

@@ -1,10 +1,10 @@
 // client/src/pages/CaseStudySetupPage.tsx
 
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
 } from "react";
+
 
 import {
   ClipboardList,
@@ -26,11 +26,12 @@ import DomainsPresenceTable from "../features/caseStudy/components/setup/Domains
 import MethodologySelectionCard from "../features/caseStudy/components/setup/MethodologySelectionCard";
 
 import CaseStudyPageHeader from "../features/caseStudy/components/layout/CaseStudyPageHeader";
+import CaseStudyReviewNotice from "../features/caseStudy/components/layout/CaseStudyReviewNotice";
 import CaseStudyScenarioCard from "../features/caseStudy/components/layout/CaseStudyScenarioCard";
 
 import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
+  useCaseStudyDefinition,
+} from "../features/caseStudy/hooks/useCaseStudyDefinition";
 
 import {
   sriTechnicalDomainNames,
@@ -41,97 +42,163 @@ import {
 } from "../features/caseStudy/hooks/useCaseStudySetup";
 
 import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
+  useCaseStudyProgress as useBackendCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
 
 import type {
-  CaseStudyDetails,
+  CaseStudyDefinition,
+  SetupAnswers,
 } from "../features/caseStudy/types/caseStudy.types";
+
+import type {
+  CaseStudyRouteStage,
+} from "../features/caseStudy/progress/caseStudyProgress.types";
 
 import {
   CASE_STUDY_ROUTES,
 } from "../constants/routes";
 
 const CaseStudySetupPage = () => {
-  const caseStudy =
-    caseStudyMockData[0] ?? null;
+  const {
+    definition,
+    isLoading:
+      isDefinitionLoading,
+    error:
+      definitionError,
+  } =
+    useCaseStudyDefinition();
 
-  if (!caseStudy) {
+  const {
+    progress,
+    isLoading:
+      isProgressLoading,
+    error:
+      progressError,
+  } =
+    useBackendCaseStudyProgress();
+
+  if (
+    isDefinitionLoading ||
+    isProgressLoading
+  ) {
     return (
       <PageState
-        isLoading={false}
-        error="Case study not found."
+        isLoading
+        error={null}
       >
         <div />
       </PageState>
     );
   }
 
+  if (
+    definitionError ||
+    progressError ||
+    !definition ||
+    !progress
+  ) {
+    return (
+      <PageState
+        isLoading={false}
+        error={
+          definitionError ??
+          progressError ??
+          "Could not load Case Study setup."
+        }
+      >
+        <div />
+      </PageState>
+    );
+  }
+
+  /*
+   * Setup answers are restored from canonical
+   * backend progress, while the learner-visible
+   * scenario comes from the backend definition.
+   */
+  const initialAnswers:
+    SetupAnswers | null =
+      progress.setup
+        ?.answers ??
+      null;
+
+  /*
+   * A completed Setup stage is review-only.
+   *
+   * This applies both while a later stage is
+   * currently active and after the whole Case
+   * Study has been completed.
+   */
+  const isReviewMode =
+    progress.setup
+      ?.completed ??
+    false;
+
   return (
     <CaseStudySetupContent
-      caseStudy={caseStudy}
+      caseStudy={
+        definition
+      }
+      initialAnswers={
+        initialAnswers
+      }
+      isReviewMode={
+        isReviewMode
+      }
+      allowedStages={
+        progress.allowedStages
+      }
+      nextStage={
+        progress.nextStage
+      }
     />
   );
 };
 
 type CaseStudySetupContentProps = {
-  caseStudy: CaseStudyDetails;
+  caseStudy:
+    CaseStudyDefinition;
+
+  allowedStages:
+   readonly CaseStudyRouteStage[];
+
+  initialAnswers:
+    SetupAnswers | null;
+
+  isReviewMode:
+    boolean;
+
+  nextStage:
+    CaseStudyRouteStage;
 };
 
 const CaseStudySetupContent = ({
   caseStudy,
+  initialAnswers,
+  isReviewMode,
+  allowedStages,
+  nextStage,
 }: CaseStudySetupContentProps) => {
   const navigate = useNavigate();
+
+  const {
+    applyProgress,
+  } =
+    useBackendCaseStudyProgress();
 
   const setupPageRef =
     useRef<HTMLDivElement | null>(
       null,
     );
 
-  const {
-    getProgressForCaseStudy,
-    saveSetupDraft,
-    completeSetup,
-  } = useCaseStudyProgress();
-
-  const savedProgress =
-    getProgressForCaseStudy(
-      caseStudy.id,
-    );
-
-  const initialAnswers =
-    savedProgress
-      ?.setup
-      ?.answers ?? null;
-
   const setup =
-    useCaseStudySetup({
-      caseStudy,
+  useCaseStudySetup({
+    domains: [
+      ...sriTechnicalDomainNames,
+    ],
 
-      domains: [
-        ...sriTechnicalDomainNames,
-      ],
-
-      initialAnswers,
-    });
-
-  /*
-   * Persist every setup change locally.
-   *
-   * When the answers are unchanged,
-   * saveSetupDraft preserves the existing
-   * completed state and derived results.
-   */
-  useEffect(() => {
-    saveSetupDraft(
-      caseStudy.id,
-      setup.answers,
-    );
-  }, [
-    caseStudy.id,
-    saveSetupDraft,
-    setup.answers,
-  ]);
+    initialAnswers,
+  });
 
   useLayoutEffect(() => {
     if (
@@ -175,54 +242,42 @@ const CaseStudySetupContent = ({
     });
   }, [setup.errors]);
 
-  const handleContinue = () => {
-    const isValid =
-      setup.validate();
 
-    if (
-      !isValid ||
-      !setup.assessmentMethod ||
-      !setup.buildingType ||
-      !setup.climateZone
-    ) {
-      return;
-    }
+  const handleContinue =
+    async () => {
+      if (isReviewMode) {
+        return;
+      }
 
-    /*
-     * Persist the validated setup before
-     * navigating to the assessment.
-     */
-    completeSetup(
-      caseStudy.id,
-      setup.answers,
-    );
+      const response =
+        await setup.complete();
 
-    /*
-     * Route state remains temporarily for
-     * compatibility with the current
-     * CaseStudyAssessmentPage.
-     */
-    navigate(
-      CASE_STUDY_ROUTES.assessment,
-      {
-        state: {
-          caseStudy,
+      if (
+        !response ||
+        !response
+          .validation
+          .isValid
+      ) {
+        return;
+      }
 
-          domainPresence:
-            setup.domainPresence,
+      /*
+       * The completion response already contains
+       * the new canonical backend journey state.
+       *
+       * Apply it to the shared provider BEFORE
+       * navigating so CaseStudyRouteGuard sees
+       * Assessment as available immediately.
+       */
+      applyProgress(
+        response.progress,
+      );
 
-          assessmentMethod:
-            setup.assessmentMethod,
-
-          buildingType:
-            setup.buildingType,
-
-          climateZone:
-            setup.climateZone,
-        },
-      },
-    );
-  };
+      navigate(
+        CASE_STUDY_ROUTES
+          .assessment,
+      );
+    };
 
   return (
     <div
@@ -232,65 +287,86 @@ const CaseStudySetupContent = ({
       <div className="mx-auto max-w-7xl px-5 py-5 sm:px-6 lg:px-8">
         <CaseStudyPageHeader
           currentStage="building-information"
+          allowedStages={
+            allowedStages
+          }
+          nextStage={
+            nextStage
+          }
         />
+
+        {isReviewMode ? (
+          <div className="mt-6">
+            <CaseStudyReviewNotice />
+          </div>
+        ) : null}
 
         <section className="mt-10 space-y-6">
           <CaseStudyScenarioCard
             caseStudy={caseStudy}
           />
 
-          <GuidanceCard />
+          {!isReviewMode ? (
+            <GuidanceCard />
+          ) : null}
 
-          <BuildingInformationForm
-            buildingType={
-              setup.buildingType
+          <fieldset
+            disabled={
+              isReviewMode
             }
-            setBuildingType={
-              setup.setBuildingType
-            }
-            buildingUsage={
-              setup.buildingUsage
-            }
-            setBuildingUsage={
-              setup.setBuildingUsage
-            }
-            country={
-              setup.country
-            }
-            setCountry={
-              setup.setCountry
-            }
-            climateZone={
-              setup.climateZone
-            }
-            floorArea={
-              setup.floorArea
-            }
-            setFloorArea={
-              setup.setFloorArea
-            }
-            constructionYear={
-              setup.constructionYear
-            }
-            setConstructionYear={
-              setup.setConstructionYear
-            }
-            buildingState={
-              setup.buildingState
-            }
-            setBuildingState={
-              setup.setBuildingState
-            }
-            renovationYear={
-              setup.renovationYear
-            }
-            setRenovationYear={
-              setup.setRenovationYear
-            }
-            errors={
-              setup.errors
-            }
-          />
+            className="m-0 min-w-0 border-0 p-0"
+          >
+            <BuildingInformationForm
+              buildingType={
+                setup.buildingType
+              }
+              setBuildingType={
+                setup.setBuildingType
+              }
+              buildingUsage={
+                setup.buildingUsage
+              }
+              setBuildingUsage={
+                setup.setBuildingUsage
+              }
+              country={
+                setup.country
+              }
+              setCountry={
+                setup.setCountry
+              }
+              climateZone={
+                setup.climateZone
+              }
+              floorArea={
+                setup.floorArea
+              }
+              setFloorArea={
+                setup.setFloorArea
+              }
+              constructionYear={
+                setup.constructionYear
+              }
+              setConstructionYear={
+                setup.setConstructionYear
+              }
+              buildingState={
+                setup.buildingState
+              }
+              setBuildingState={
+                setup.setBuildingState
+              }
+              renovationYear={
+                setup.renovationYear
+              }
+              setRenovationYear={
+                setup.setRenovationYear
+              }
+              errors={
+                setup.errors
+              }
+            />
+          </fieldset>
 
           <ScenarioBulletsCard
             title={
@@ -306,17 +382,24 @@ const CaseStudySetupContent = ({
             layout="single"
           />
 
-          <MethodologySelectionCard
-            assessmentMethod={
-              setup.assessmentMethod
+          <fieldset
+            disabled={
+              isReviewMode
             }
-            setAssessmentMethod={
-              setup.setAssessmentMethod
-            }
-            errors={
-              setup.errors
-            }
-          />
+            className="m-0 min-w-0 border-0 p-0"
+          >
+            <MethodologySelectionCard
+              assessmentMethod={
+                setup.assessmentMethod
+              }
+              setAssessmentMethod={
+                setup.setAssessmentMethod
+              }
+              errors={
+                setup.errors
+              }
+            />
+          </fieldset>
 
           <ScenarioBulletsCard
             title={
@@ -331,35 +414,56 @@ const CaseStudySetupContent = ({
             }
           />
 
-          <DomainsPresenceTable
-            domains={[
-              ...sriTechnicalDomainNames,
-            ]}
-            domainPresence={
-              setup.domainPresence
+          <fieldset
+            disabled={
+              isReviewMode
             }
-            setDomainPresence={
-              setup.setDomainPresence
-            }
-            errors={
-              setup.errors
-            }
-          />
-
-          <div className="flex justify-end pb-6">
-            <PrimaryButton
-              onClick={
-                handleContinue
+            className="m-0 min-w-0 border-0 p-0"
+          >
+            <DomainsPresenceTable
+              domains={[
+                ...sriTechnicalDomainNames,
+              ]}
+              domainPresence={
+                setup.domainPresence
               }
-              className="group w-full sm:w-auto"
-            >
-              <span className="inline-flex items-center gap-2">
-                Continue to Assessment
+              setDomainPresence={
+                setup.setDomainPresence
+              }
+              errors={
+                setup.errors
+              }
+            />
+          </fieldset>
 
-                <ForwardArrowIcon />
-              </span>
-            </PrimaryButton>
-          </div>
+          {!isReviewMode &&
+          setup.submitError ? (
+            <p className="text-sm font-semibold text-red-600">
+              {setup.submitError}
+            </p>
+          ) : null}
+
+          {!isReviewMode ? (
+            <div className="flex justify-end pb-6">
+              <PrimaryButton
+                onClick={
+                  handleContinue
+                }
+                disabled={
+                  setup.isSubmitting
+                }
+                className="group w-full sm:w-auto"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {setup.isSubmitting
+                    ? "Completing..."
+                    : "Continue to Assessment"}
+
+                  <ForwardArrowIcon />
+                </span>
+              </PrimaryButton>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

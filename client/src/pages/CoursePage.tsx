@@ -11,22 +11,24 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import {
+  useCaseStudyProgress as useSharedCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
+
+import {
+  useCourseProgress,
+} from "../app/providers/CourseProgressProvider";
+
 import PageHeader from "../components/ui/PageHeader";
 
 import {
   ROUTES,
 } from "../constants/routes";
 
-import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
-
-import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
-
 import CaseStudyStageCard from "../features/course/components/CaseStudyStageCard";
+
 import CourseProgressCard from "../features/course/components/CourseProgressCard";
+
 import CourseSectionCard from "../features/course/components/CourseSectionCard";
 
 import {
@@ -42,10 +44,6 @@ import type {
 import {
   courseDefinition,
 } from "../features/course/data/courseDefinition";
-
-import {
-  useCourseProgress,
-} from "../features/course/hooks/useCourseProgress";
 
 import {
   buildCourseOverview,
@@ -108,47 +106,39 @@ const CoursePage = () => {
     useNavigate();
 
   const {
-    progress,
-  } = useCourseProgress();
+    progress:
+      courseProgress,
+  } =
+    useCourseProgress();
 
   const {
-    getProgressForCaseStudy,
-  } = useCaseStudyProgress();
+    progress:
+      caseStudyProgress,
+  } =
+    useSharedCaseStudyProgress();
 
   const overview = useMemo(
     () =>
       buildCourseOverview(
         courseDefinition,
-        progress,
+        courseProgress,
       ),
-    [progress],
+    [courseProgress],
   );
 
   /*
-   * There is currently one practical Case Study
-   * in the learning path.
-   */
-  const caseStudy =
-    caseStudyMockData[0] ??
-    null;
-
-  const caseStudyRecord =
-    caseStudy
-      ? getProgressForCaseStudy(
-          caseStudy.id,
-        )
-      : null;
-
-  /*
-   * Case Study completion is a durable learning
-   * achievement.
+   * Official Case Study completion is durable.
    *
-   * Practice Again resets the current attempt,
-   * but does not remove this completion.
+   * During Practice Again the active attempt may be
+   * incomplete, therefore journeyStatus === "completed"
+   * is not a safe durable completion check.
+   *
+   * officialAttemptId remains bound to the first
+   * completed official attempt.
    */
   const hasCompletedCaseStudy =
-    caseStudyRecord
-      ?.completion != null;
+    caseStudyProgress
+      ?.officialAttemptId != null;
 
   const [
     expandedSectionIds,
@@ -175,7 +165,7 @@ const CoursePage = () => {
 
   /**
    * Synchronises expansion state only when a
-   * section's progress status changes.
+   * section's backend-owned progress status changes.
    *
    * - A newly completed section closes.
    * - A newly current section opens.
@@ -257,6 +247,13 @@ const CoursePage = () => {
   const openStep = (
     step: CourseStepView,
   ) => {
+    /*
+     * This is only a UI guard.
+     *
+     * The backend independently enforces access
+     * for lesson quizzes and final tests and is
+     * the authority for Course progression.
+     */
     if (
       step.status === "locked"
     ) {
@@ -268,17 +265,18 @@ const CoursePage = () => {
     );
   };
 
-  const continueLearning = () => {
-    if (
-      !overview.currentStep
-    ) {
-      return;
-    }
+  const continueLearning =
+    () => {
+      if (
+        !overview.currentStep
+      ) {
+        return;
+      }
 
-    openStep(
-      overview.currentStep,
-    );
-  };
+      openStep(
+        overview.currentStep,
+      );
+    };
 
   const toggleSection = (
     sectionId: TheorySectionId,
@@ -311,7 +309,8 @@ const CoursePage = () => {
 
   const openCaseStudy = () => {
     if (
-      !overview.isCaseStudyUnlocked
+      !overview
+        .isCaseStudyUnlocked
     ) {
       return;
     }
@@ -364,16 +363,19 @@ const CoursePage = () => {
       <div className="mt-8">
         <CaseStudyStageCard
           unlocked={
-            overview.isCaseStudyUnlocked
+            overview
+              .isCaseStudyUnlocked
           }
           completed={
             hasCompletedCaseStudy
           }
           completedSections={
-            overview.completedSections
+            overview
+              .completedSections
           }
           totalSections={
-            overview.totalSections
+            overview
+              .totalSections
           }
           onOpen={
             openCaseStudy

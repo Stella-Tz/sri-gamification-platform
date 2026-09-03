@@ -1,10 +1,30 @@
-//client\src\api\dashboardApi.ts
+// client/src/api/dashboardApi.ts
 
-import { apiClient } from "./apiClient";
-import type { DashboardViewModel } from "../features/dashboard/dashboard.types";
+import {
+  apiClient,
+} from "./apiClient";
+
+import type {
+  DashboardDataDto,
+} from "../features/dashboard/dashboard.types";
+
+type DashboardResponse = {
+  dashboard:
+    DashboardDataDto;
+};
 
 export const dashboardApi = {
-  async getDashboard(): Promise<DashboardViewModel> {
-    return apiClient<DashboardViewModel>("/dashboard");
+  async getDashboard():
+    Promise<
+      DashboardDataDto
+    > {
+    const response =
+      await apiClient<
+        DashboardResponse
+      >(
+        "/dashboard",
+      );
+
+    return response.dashboard;
   },
 };

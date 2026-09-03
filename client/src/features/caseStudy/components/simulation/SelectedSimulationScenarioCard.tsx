@@ -12,10 +12,13 @@ import {
 
 import { getTechnicalDomainIcon } from "../../data/technicalDomainIcons";
 
-import type { GuidedImprovementAnalysisFindings } from "../../types/caseStudy.types";
+import type {
+  GuidedImprovementBackendFindings,
+} from "../../improvement/guidedImprovement.types";
 
 type SelectedSimulationScenarioCardProps = {
-  findings: GuidedImprovementAnalysisFindings;
+  findings:
+    GuidedImprovementBackendFindings;
 };
 
 type ScenarioTone =
@@ -30,7 +33,8 @@ type ImplementationSegment = {
 };
 
 type ResolvedUpgrade = {
-  currentSegments: ImplementationSegment[];
+  currentSegments:
+    ImplementationSegment[];
   maximumLevel: number;
 };
 
@@ -55,23 +59,39 @@ const scenarioCardClassName = `
 const SelectedSimulationScenarioCard = ({
   findings,
 }: SelectedSimulationScenarioCardProps) => {
-  const service = findings.highestImpactService;
+  const service =
+    findings
+      .highestImpactService;
 
-  const resolvedUpgrade = resolveUpgrade({
-    currentLevel: service.currentLevelNumber,
-    currentShare: service.currentShare,
-    currentAdditionalLevel:
-      service.currentAdditionalLevelNumber,
-    maximumLevel: service.maxLevelNumber,
-  });
+  const resolvedUpgrade =
+    resolveUpgrade({
+      currentLevel:
+        service
+          .currentLevelNumber,
+
+      currentShare:
+        service
+          .currentShare,
+
+      currentAdditionalLevel:
+        service
+          .currentAdditionalLevelNumber,
+
+      maximumLevel:
+        service
+          .maxLevelNumber,
+    });
 
   if (!resolvedUpgrade) {
-    return <SelectedSimulationScenarioErrorState />;
+    return (
+      <SelectedSimulationScenarioErrorState />
+    );
   }
 
   const TechnicalDomainIcon =
     getTechnicalDomainIcon(
-      findings.highestWeightTechnicalDomain,
+      findings
+        .highestWeightTechnicalDomain,
     );
 
   return (
@@ -89,9 +109,14 @@ const SelectedSimulationScenarioCard = ({
 
       <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-stretch">
         <ScenarioStep
-          icon={Zap}
+          icon={
+            Zap
+          }
           label="Impact Criterion"
-          value={findings.highestImpactCriterion}
+          value={
+            findings
+              .highestImpactCriterion
+          }
           note="It has the highest official weighting among the impact criteria considered in the Guided Improvement Analysis."
           tone="violet"
         />
@@ -99,9 +124,14 @@ const SelectedSimulationScenarioCard = ({
         <ScenarioArrow />
 
         <ScenarioStep
-          icon={TechnicalDomainIcon}
+          icon={
+            TechnicalDomainIcon
+          }
           label="Technical Domain"
-          value={findings.highestWeightTechnicalDomain}
+          value={
+            findings
+              .highestWeightTechnicalDomain
+          }
           note={`It has the highest official domain weight for ${findings.highestImpactCriterion}.`}
           tone="amber"
         />
@@ -109,10 +139,18 @@ const SelectedSimulationScenarioCard = ({
         <ScenarioArrow />
 
         <ScenarioStep
-          icon={BarChart3}
+          icon={
+            BarChart3
+          }
           label="Service"
-          value={service.serviceCode}
-          secondaryValue={service.serviceName}
+          value={
+            service
+              .serviceCode
+          }
+          secondaryValue={
+            service
+              .serviceName
+          }
           note={`It has the highest maximum-level impact score among the assessed services that can still be upgraded in the ${findings.highestWeightTechnicalDomain} domain.`}
           tone="emerald"
         />
@@ -120,9 +158,18 @@ const SelectedSimulationScenarioCard = ({
         <ScenarioArrow />
 
         <UpgradeStep
-          serviceCode={service.serviceCode}
-          currentSegments={resolvedUpgrade.currentSegments}
-          maximumLevel={resolvedUpgrade.maximumLevel}
+          serviceCode={
+            service
+              .serviceCode
+          }
+          currentSegments={
+            resolvedUpgrade
+              .currentSegments
+          }
+          maximumLevel={
+            resolvedUpgrade
+              .maximumLevel
+          }
         />
       </div>
     </section>
@@ -147,7 +194,11 @@ const ScenarioStep = ({
   tone,
 }: ScenarioStepProps) => {
   return (
-    <article className={scenarioCardClassName}>
+    <article
+      className={
+        scenarioCardClassName
+      }
+    >
       <div
         aria-hidden="true"
         className={`mx-auto flex h-20 w-20 shrink-0 items-center justify-center rounded-full ring-1 ${getIconToneClass(
@@ -192,8 +243,12 @@ const ScenarioStep = ({
       <div className="mt-4 min-h-0 xl:mt-0">
         <InfoBox
           title="Why This Was Selected"
-          note={note}
-          tone={tone}
+          note={
+            note
+          }
+          tone={
+            tone
+          }
         />
       </div>
     </article>
@@ -202,7 +257,10 @@ const ScenarioStep = ({
 
 type UpgradeStepProps = {
   serviceCode: string;
-  currentSegments: readonly ImplementationSegment[];
+
+  currentSegments:
+    readonly ImplementationSegment[];
+
   maximumLevel: number;
 };
 
@@ -212,7 +270,11 @@ const UpgradeStep = ({
   maximumLevel,
 }: UpgradeStepProps) => {
   return (
-    <article className={scenarioCardClassName}>
+    <article
+      className={
+        scenarioCardClassName
+      }
+    >
       <div
         aria-hidden="true"
         className="mx-auto flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100"
@@ -236,7 +298,9 @@ const UpgradeStep = ({
         <div className="flex flex-col items-center justify-center gap-3 min-[420px]:flex-row min-[420px]:gap-4">
           <ImplementationBlock
             label="From"
-            segments={currentSegments}
+            segments={
+              currentSegments
+            }
           />
 
           <ArrowRight
@@ -249,8 +313,11 @@ const UpgradeStep = ({
             label="To"
             segments={[
               {
-                level: maximumLevel,
-                share: 100,
+                level:
+                  maximumLevel,
+
+                share:
+                  100,
               },
             ]}
           />
@@ -270,7 +337,9 @@ const UpgradeStep = ({
 
 type ImplementationBlockProps = {
   label: string;
-  segments: readonly ImplementationSegment[];
+
+  segments:
+    readonly ImplementationSegment[];
 };
 
 const ImplementationBlock = ({
@@ -284,23 +353,36 @@ const ImplementationBlock = ({
       </p>
 
       <div className="mt-2 space-y-2">
-        {segments.map((segment, index) => (
-          <div
-            key={`${label}-${segment.level}-${segment.share}-${index}`}
-            className="text-center"
-          >
-            <p className="text-lg font-extrabold leading-6 text-blue-700">
-              Level {segment.level}
-            </p>
-
-            <p
-              aria-label={`${segment.share}% of the building's net surface area`}
-              className="mt-1 text-xs font-bold leading-4 text-slate-500"
+        {segments.map(
+          (
+            segment,
+            index,
+          ) => (
+            <div
+              key={`${label}-${segment.level}-${segment.share}-${index}`}
+              className="text-center"
             >
-              {segment.share}%
-            </p>
-          </div>
-        ))}
+              <p className="text-lg font-extrabold leading-6 text-blue-700">
+                Level{" "}
+                {
+                  segment
+                    .level
+                }
+              </p>
+
+              <p
+                aria-label={`${segment.share}% of the building's net surface area`}
+                className="mt-1 text-xs font-bold leading-4 text-slate-500"
+              >
+                {
+                  segment
+                    .share
+                }
+                %
+              </p>
+            </div>
+          ),
+        )}
       </div>
     </div>
   );
@@ -343,25 +425,33 @@ const InfoBox = ({
   );
 };
 
-const ScenarioArrow = () => {
-  return (
-    <div
-      aria-hidden="true"
-      className="flex items-center justify-center py-1"
-    >
-      <ArrowRight
-        size={28}
-        className="rotate-90 text-slate-400 xl:rotate-0"
-      />
-    </div>
-  );
-};
+const ScenarioArrow =
+  () => {
+    return (
+      <div
+        aria-hidden="true"
+        className="flex items-center justify-center py-1"
+      >
+        <ArrowRight
+          size={28}
+          className="rotate-90 text-slate-400 xl:rotate-0"
+        />
+      </div>
+    );
+  };
 
 type ResolveUpgradeParams = {
-  currentLevel: number;
-  currentShare: number;
-  currentAdditionalLevel?: number;
-  maximumLevel: number;
+  currentLevel:
+    number;
+
+  currentShare:
+    number;
+
+  currentAdditionalLevel?:
+    number;
+
+  maximumLevel:
+    number;
 };
 
 const resolveUpgrade = ({
@@ -369,11 +459,18 @@ const resolveUpgrade = ({
   currentShare,
   currentAdditionalLevel,
   maximumLevel,
-}: ResolveUpgradeParams): ResolvedUpgrade | null => {
+}: ResolveUpgradeParams):
+  ResolvedUpgrade | null => {
   if (
-    !isValidFunctionalityLevel(currentLevel) ||
-    !isValidFunctionalityLevel(maximumLevel) ||
-    !Number.isFinite(currentShare) ||
+    !isValidFunctionalityLevel(
+      currentLevel,
+    ) ||
+    !isValidFunctionalityLevel(
+      maximumLevel,
+    ) ||
+    !Number.isFinite(
+      currentShare,
+    ) ||
     currentShare < 0 ||
     currentShare > 100
   ) {
@@ -389,39 +486,59 @@ const resolveUpgrade = ({
     return null;
   }
 
-  const currentSegments: ImplementationSegment[] = [];
+  const currentSegments:
+    ImplementationSegment[] =
+      [];
 
-  if (currentShare > 0) {
+  if (
+    currentShare > 0
+  ) {
     currentSegments.push({
-      level: currentLevel,
-      share: currentShare,
+      level:
+        currentLevel,
+
+      share:
+        currentShare,
     });
   }
 
   if (
     currentShare < 100 &&
-    currentAdditionalLevel !== undefined
+    currentAdditionalLevel !==
+      undefined
   ) {
     currentSegments.push({
-      level: currentAdditionalLevel,
-      share: 100 - currentShare,
+      level:
+        currentAdditionalLevel,
+
+      share:
+        100 -
+        currentShare,
     });
   }
 
   if (
-    currentSegments.length === 0 ||
+    currentSegments
+      .length === 0 ||
     currentSegments.some(
-      (segment) => segment.level > maximumLevel,
+      (segment) =>
+        segment.level >
+        maximumLevel,
     )
   ) {
     return null;
   }
 
-  const hasUpgradePotential = currentSegments.some(
-    (segment) => segment.level < maximumLevel,
-  );
+  const hasUpgradePotential =
+    currentSegments.some(
+      (segment) =>
+        segment.level <
+        maximumLevel,
+    );
 
-  if (!hasUpgradePotential) {
+  if (
+    !hasUpgradePotential
+  ) {
     return null;
   }
 
@@ -432,46 +549,52 @@ const resolveUpgrade = ({
 };
 
 const isValidFunctionalityLevel = (
-  level: number | undefined,
+  level:
+    number | undefined,
 ): level is number => {
   return (
-    level !== undefined &&
-    Number.isInteger(level) &&
+    level !==
+      undefined &&
+    Number.isInteger(
+      level,
+    ) &&
     level >= 0
   );
 };
 
-const SelectedSimulationScenarioErrorState = () => {
-  return (
-    <section
-      role="alert"
-      className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm"
-    >
-      <div className="flex items-start gap-3">
-        <AlertCircle
-          size={20}
-          className="mt-0.5 shrink-0 text-amber-700"
-          aria-hidden="true"
-        />
+const SelectedSimulationScenarioErrorState =
+  () => {
+    return (
+      <section
+        role="alert"
+        className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <AlertCircle
+            size={20}
+            className="mt-0.5 shrink-0 text-amber-700"
+            aria-hidden="true"
+          />
 
-        <div className="min-w-0">
-          <h2 className="text-xl font-extrabold leading-7 text-amber-900">
-            Recommended Upgrade Unavailable
-          </h2>
+          <div className="min-w-0">
+            <h2 className="text-xl font-extrabold leading-7 text-amber-900">
+              Recommended Upgrade Unavailable
+            </h2>
 
-          <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">
-            The selected service does not contain a complete and valid
-            upgrade scenario. Review the Guided Improvement Analysis
-            before running the simulation.
-          </p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">
+              The selected service does not contain a complete and valid
+              upgrade scenario. Review the Guided Improvement Analysis
+              before running the simulation.
+            </p>
+          </div>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
+    );
+  };
 
 const getIconToneClass = (
-  tone: ScenarioTone,
+  tone:
+    ScenarioTone,
 ) => {
   switch (tone) {
     case "amber":
@@ -489,7 +612,8 @@ const getIconToneClass = (
 };
 
 const getValueToneClass = (
-  tone: ScenarioTone,
+  tone:
+    ScenarioTone,
 ) => {
   switch (tone) {
     case "amber":
@@ -507,7 +631,8 @@ const getValueToneClass = (
 };
 
 const getDividerClass = (
-  tone: ScenarioTone,
+  tone:
+    ScenarioTone,
 ) => {
   switch (tone) {
     case "amber":
@@ -525,7 +650,8 @@ const getDividerClass = (
 };
 
 const getNoteToneClass = (
-  tone: ScenarioTone,
+  tone:
+    ScenarioTone,
 ) => {
   switch (tone) {
     case "amber":

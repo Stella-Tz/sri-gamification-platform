@@ -6,12 +6,15 @@ import { domainIcons } from "../../data/domainIcons";
 import { sriImpactCriterionNames } from "../../data/sriOfficialConstants";
 
 import type {
-  CaseStudySubmitResult,
   TechnicalDomainName,
 } from "../../types/caseStudy.types";
 
+import type {
+  CaseStudyResultsPublicResult,
+} from "../../results/caseStudyResults.types";
+
 type ResultsDomainScoresCardProps = {
-  result: CaseStudySubmitResult;
+  result: CaseStudyResultsPublicResult;
 };
 
 type ResolvedDomainScore = {
@@ -94,7 +97,7 @@ const ResultsDomainScoresCard = ({
 };
 
 const resolveDomainScores = (
-  result: CaseStudySubmitResult,
+  result: CaseStudyResultsPublicResult,
   includedDomains: readonly TechnicalDomainName[],
 ): ResolvedDomainScore[] | null => {
   const resolvedScores: ResolvedDomainScore[] = [];

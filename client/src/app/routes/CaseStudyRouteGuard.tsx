@@ -1,293 +1,95 @@
 // client/src/app/routes/CaseStudyRouteGuard.tsx
 
 import {
-  useEffect,
-  useMemo,
-} from "react";
-
-import {
   Navigate,
   Outlet,
 } from "react-router-dom";
+
+import {
+  useCourseProgress,
+} from "../providers/CourseProgressProvider";
+
+import {
+  useCaseStudyProgress,
+} from "../providers/CaseStudyProgressProvider";
 
 import {
   CASE_STUDY_ROUTES,
 } from "../../constants/routes";
 
 import {
-  caseStudyMockData,
-} from "../../features/caseStudy/data/caseStudyMockData";
+  getCaseStudyStagePath,
+} from "../../features/caseStudy/progress/caseStudyProgress.presentation";
 
 import type {
-  CaseStudyProgressRecord,
   CaseStudyRouteStage,
 } from "../../features/caseStudy/progress/caseStudyProgress.types";
 
-import {
-  useCaseStudyProgress,
-} from "../../features/caseStudy/progress/useCaseStudyProgress";
-
-import {
-  courseDefinition,
-} from "../../features/course/data/courseDefinition";
-
-import {
-  useCourseProgress,
-} from "../../features/course/hooks/useCourseProgress";
-
-import {
-  buildCourseOverview,
-} from "../../features/course/utils/buildCourseOverview";
-
 type CaseStudyRouteGuardProps = {
-  stage: CaseStudyRouteStage;
-};
-
-const hasCurrentSimulationResult = (
-  record:
-    | CaseStudyProgressRecord
-    | null,
-): boolean => {
-  return (
-    record?.simulationResult != null
-  );
-};
-
-const hasPermanentOfficialSimulationResult = (
-  record:
-    | CaseStudyProgressRecord
-    | null,
-): boolean => {
-  return (
-    record?.officialResult
-      ?.simulationResult != null
-  );
-};
-
-const canAccessCaseStudyStage = ({
-  record,
-  stage,
-}: {
-  record:
-    | CaseStudyProgressRecord
-    | null;
-
   stage:
     CaseStudyRouteStage;
-}): boolean => {
-  /*
-   * Building Information is the first stage.
-   * It is accessible as soon as the Case Study
-   * has been unlocked through Course completion.
-   */
-  if (stage === "setup") {
-    return true;
-  }
-
-  const hasCompletedSetup =
-    record?.setup?.completed ===
-    true;
-
-  if (
-    stage === "assessment"
-  ) {
-    return hasCompletedSetup;
-  }
-
-  const hasCompletedAssessment =
-    hasCompletedSetup &&
-    record?.assessment
-      ?.completed === true &&
-    record.baselineResult !==
-      null;
-
-  if (stage === "results") {
-    return hasCompletedAssessment;
-  }
-
-  const hasCompletedResultsInvestigation =
-    hasCompletedAssessment &&
-    record
-      ?.resultsInvestigation
-      ?.completed === true;
-
-  if (
-    stage ===
-    "guided-improvement-analysis"
-  ) {
-    return hasCompletedResultsInvestigation;
-  }
-
-  const hasCompletedGuidedImprovement =
-    hasCompletedResultsInvestigation &&
-    record
-      ?.guidedImprovement
-      ?.completed === true;
-
-  if (
-    stage ===
-    "simulation-results"
-  ) {
-    const hasCompletedCurrentSimulation =
-      hasCompletedGuidedImprovement &&
-      hasCurrentSimulationResult(
-        record,
-      );
-
-    /*
-     * The Simulation Results page has two valid
-     * read paths:
-     *
-     * 1. the current attempt has reached and
-     *    completed its simulation, or
-     * 2. the learner already has a permanent
-     *    official result from the first completed
-     *    Case Study attempt.
-     *
-     * The second path is important after
-     * Practice Again, because the active practice
-     * attempt intentionally clears its own
-     * simulationResult while officialResult stays
-     * available for review.
-     */
-    return (
-      hasCompletedCurrentSimulation ||
-      hasPermanentOfficialSimulationResult(
-        record,
-      )
-    );
-  }
-
-  return false;
 };
 
 const CaseStudyRouteGuard = ({
   stage,
 }: CaseStudyRouteGuardProps) => {
   /*
-   * The practical Case Study is unlocked only
-   * after all guided Course sections have been
-   * completed.
-   */
-  const {
-    progress: courseProgress,
-  } = useCourseProgress();
-
-  const courseOverview =
-    useMemo(
-      () =>
-        buildCourseOverview(
-          courseDefinition,
-          courseProgress,
-        ),
-      [courseProgress],
-    );
-
-  const totalSections =
-    courseOverview
-      .sections.length;
-
-  const completedSections =
-    courseOverview
-      .sections.filter(
-        (section) =>
-          section.status ===
-          "completed",
-      ).length;
-
-  const isCaseStudyUnlocked =
-    totalSections > 0 &&
-    completedSections ===
-      totalSections;
-
-  /*
-   * There is currently one Case Study.
-   */
-  const caseStudyId =
-    caseStudyMockData[0]?.id ??
-    null;
-
-  const {
-    getProgressForCaseStudy,
-    getNextActionForCaseStudy,
-    markStageVisited,
-  } = useCaseStudyProgress();
-
-  const progressRecord =
-    caseStudyId
-      ? getProgressForCaseStudy(
-          caseStudyId,
-        )
-      : null;
-
-  const canAccessStage =
-    caseStudyId !== null &&
-    isCaseStudyUnlocked &&
-    canAccessCaseStudyStage({
-      record:
-        progressRecord,
-
-      stage,
-    });
-
-  /*
-   * A permanent official Simulation Result can
-   * be reviewed while a new practice attempt is
-   * still in progress.
+   * Course completion controls whether the
+   * practical Case Study itself is available.
    *
-   * In that case, opening /simulation-results is
-   * review navigation only. It must not change
-   * lastVisitedStage for the active practice
-   * attempt, because that would make the practice
-   * record claim that the learner has already
-   * visited its Simulation Results stage.
+   * The backend Course progress DTO already
+   * contains the canonical unlock decision.
+   * The guard must not rebuild Course progress
+   * from the frontend Course definition.
    */
-  const isReviewingPermanentOfficialResult =
-    stage ===
-      "simulation-results" &&
-    !hasCurrentSimulationResult(
-      progressRecord,
-    ) &&
-    hasPermanentOfficialSimulationResult(
-      progressRecord,
-    );
+  const {
+    progress:
+      courseProgress,
+
+    isLoading:
+      isCourseProgressLoading,
+  } =
+    useCourseProgress();
 
   /*
-   * Every successful active-attempt page visit is
-   * recorded. Breadcrumb navigation therefore
-   * remains non-destructive, while review of the
-   * permanent official result is kept separate
-   * from the active practice attempt.
+   * Case Study stage access comes from the
+   * shared canonical backend progress.
    */
-  useEffect(() => {
-    if (
-      !canAccessStage ||
-      !caseStudyId ||
-      isReviewingPermanentOfficialResult
-    ) {
-      return;
-    }
-
-    markStageVisited(
-      caseStudyId,
-      stage,
-    );
-  }, [
-    canAccessStage,
-    caseStudyId,
-    isReviewingPermanentOfficialResult,
-    markStageVisited,
-    stage,
-  ]);
+  const {
+    progress,
+    isLoading:
+      isCaseStudyProgressLoading,
+  } =
+    useCaseStudyProgress();
 
   /*
-   * A locked Case Study or a missing Case Study
-   * definition returns the user to the Case
-   * Study overview page.
+   * Do not make access decisions while either
+   * canonical progress source is still hydrating.
+   *
+   * In particular, the Course hook starts with
+   * an empty presentation-safe progress object,
+   * whose isCaseStudyUnlocked value is false.
+   * Redirecting from that temporary state would
+   * incorrectly send an already-unlocked learner
+   * back to the Case Study overview.
    */
   if (
-    !isCaseStudyUnlocked ||
-    !caseStudyId
+    isCourseProgressLoading ||
+    (
+      isCaseStudyProgressLoading &&
+      progress === null
+    )
+  ) {
+    return null;
+  }
+
+  /*
+   * Backend Course progress is authoritative
+   * for the Course -> Case Study unlock.
+   */
+  if (
+    !courseProgress
+      .isCaseStudyUnlocked
   ) {
     return (
       <Navigate
@@ -300,40 +102,56 @@ const CaseStudyRouteGuard = ({
   }
 
   /*
-   * Opening a future URL manually redirects the
-   * user to the first stage that still requires
-   * attention in the current attempt.
+   * The Case Study backend returns a real
+   * "not-started" DTO when no attempt exists.
    *
-   * The one exception is Simulation Results:
-   * once a permanent officialResult exists, that
-   * result remains reviewable independently of a
-   * later Practice Again attempt.
-   *
-   * Examples:
-   *
-   * /results without a completed assessment
-   * → /assessment
-   *
-   * /guided-improvement-analysis without a
-   * completed Results Investigation
-   * → /results
-   *
-   * /simulation-results without either a current
-   * completed simulation or a permanent official
-   * result
-   * → current attempt next action
+   * Therefore null here represents an unavailable
+   * progress state rather than a valid
+   * "not started" journey.
    */
+  if (!progress) {
+    return (
+      <Navigate
+        to={
+          CASE_STUDY_ROUTES.home
+        }
+        replace
+      />
+    );
+  }
+
+  /*
+   * Backend-only Case Study stage access.
+   *
+   * The frontend does NOT infer whether Setup,
+   * Assessment, Results Investigation, Guided
+   * Improvement or Simulation are complete.
+   *
+   * All of that has already been resolved into
+   * progress.allowedStages by the backend.
+   */
+  const canAccessStage =
+    progress
+      .allowedStages
+      .includes(
+        stage,
+      );
+
   if (!canAccessStage) {
-    const fallbackAction =
-      getNextActionForCaseStudy(
-        caseStudyId,
+    /*
+     * The backend also determines nextStage.
+     *
+     * This helper performs only the
+     * stage -> React route mapping.
+     */
+    const fallbackPath =
+      getCaseStudyStagePath(
+        progress.nextStage,
       );
 
     return (
       <Navigate
-        to={
-          fallbackAction.path
-        }
+        to={fallbackPath}
         replace
       />
     );

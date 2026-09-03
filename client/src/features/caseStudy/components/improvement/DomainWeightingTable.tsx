@@ -2,83 +2,51 @@
 
 import ImpactCriterionIcon from "../../../../components/ui/impact-criteria/ImpactCriterionIcon";
 
-import { getTechnicalDomainIcon } from "../../data/technicalDomainIcons";
-
 import {
-  sriImpactCriterionNames,
-  sriTechnicalDomainNames,
-} from "../../data/sriOfficialConstants";
-
-import { getOfficialSriWeight } from "../../data/sriMethodWeightings";
+  getTechnicalDomainIcon,
+} from "../../data/technicalDomainIcons";
 
 import type {
-  BuildingType,
-  ClimateZone,
   ImpactCriterionName,
-  OfficialAssessmentMethod,
 } from "../../types/caseStudy.types";
 
-type DomainWeightingTableProps = {
-  assessmentMethod: OfficialAssessmentMethod;
-  buildingType: BuildingType;
-  climateZone: ClimateZone;
-  focusImpactCriterion: ImpactCriterionName;
+import type {
+  GuidedImprovementDomainWeightingTable as GuidedImprovementDomainWeightingTableData,
+} from "../../improvement/guidedImprovement.types";
+
+type Props = {
+  table:
+    GuidedImprovementDomainWeightingTableData;
+
+  focusImpactCriterion:
+    ImpactCriterionName;
+
   showHighlight?: boolean;
 };
 
 const DomainWeightingTable = ({
-  assessmentMethod,
-  buildingType,
-  climateZone,
+  table,
   focusImpactCriterion,
   showHighlight = false,
-}: DomainWeightingTableProps) => {
+}: Props) => {
   return (
     <div
       role="region"
       tabIndex={0}
       aria-label={`Official technical-domain weightings for ${focusImpactCriterion}. Scroll horizontally to view all impact criteria.`}
-      style={{
-        contain: "layout paint",
-      }}
-      className="
-        results-horizontal-scroll
-        mt-5
-        w-full
-        min-w-0
-        max-w-full
-        overflow-x-auto
-        overscroll-x-contain
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        shadow-sm
-        !pb-0
-        [scrollbar-width:none]
-        [&::-webkit-scrollbar]:hidden
-        focus-visible:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-blue-500
-        focus-visible:ring-offset-2
-      "
+      className="results-horizontal-scroll mt-5 max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-slate-200 bg-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
     >
-      <table className="w-full min-w-[970px] border-separate border-spacing-0 text-sm sm:min-w-[1080px]">
-        <caption className="sr-only">
-          Official SRI technical-domain weightings across the seven impact
-          criteria.
-        </caption>
-
+      <table className="w-full min-w-[1080px] border-separate border-spacing-0 text-sm">
         <thead>
           <tr className="bg-slate-100">
             <th
               scope="col"
-              className="sticky left-0 z-20 w-[140px] min-w-[140px] border-b border-slate-200 bg-slate-100 px-3 py-5 text-center text-xs font-extrabold uppercase tracking-wide text-blue-950 sm:w-[230px] sm:min-w-[230px] sm:px-5"
+              className="sticky left-0 z-20 w-[230px] min-w-[230px] border-b border-slate-200 bg-slate-100 px-5 py-5 text-center text-xs font-extrabold uppercase tracking-wide text-blue-950"
             >
               Technical domain
             </th>
 
-            {sriImpactCriterionNames.map(
+            {table.impactCriteria.map(
               (impactCriterion) => {
                 const isFocused =
                   impactCriterion ===
@@ -117,34 +85,21 @@ const DomainWeightingTable = ({
         </thead>
 
         <tbody>
-          {sriTechnicalDomainNames.map(
-            (
-              domain,
-              domainIndex,
-            ) => {
+          {table.rows.map(
+            (row) => {
               const DomainIcon =
                 getTechnicalDomainIcon(
-                  domain,
+                  row.domain,
                 );
-
-              const isLastRow =
-                domainIndex ===
-                sriTechnicalDomainNames.length -
-                  1;
-
-              const rowBorderClass =
-                isLastRow
-                  ? ""
-                  : "border-b border-slate-200";
 
               return (
                 <tr
-                  key={domain}
+                  key={row.domain}
                   className="group"
                 >
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 w-[140px] min-w-[140px] border-b border-slate-200 bg-white px-3 py-4 text-left font-extrabold text-slate-700 transition-colors duration-200 group-hover:bg-slate-50 sm:w-[230px] sm:min-w-[230px] sm:px-5"
+                    className="sticky left-0 z-10 min-w-[230px] border-b border-slate-200 bg-white px-5 py-4 text-left font-extrabold text-slate-700 transition-colors duration-200 group-hover:bg-slate-50"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <DomainIcon
@@ -154,47 +109,43 @@ const DomainWeightingTable = ({
                       />
 
                       <span className="min-w-0 break-words">
-                        {domain}
+                        {row.domain}
                       </span>
                     </div>
                   </th>
 
-                  {sriImpactCriterionNames.map(
-                    (
-                      impactCriterion,
-                    ) => {
-                      const isFocused =
-                        impactCriterion ===
-                        focusImpactCriterion;
+                  {table
+                    .impactCriteria
+                    .map(
+                      (
+                        impactCriterion,
+                      ) => {
+                        const isFocused =
+                          impactCriterion ===
+                          focusImpactCriterion;
 
-                      const value =
-                        getOfficialSriWeight(
-                          {
-                            assessmentMethod,
-                            buildingType,
-                            climateZone,
-                            domain,
-                            impactCriterion,
-                          },
+                        const value =
+                          row.weights[
+                            impactCriterion
+                          ];
+
+                        return (
+                          <td
+                            key={`${row.domain}-${impactCriterion}`}
+                            className={`border-b border-slate-200 px-4 py-4 text-center text-base font-semibold transition-colors duration-200 ${
+                              showHighlight &&
+                              isFocused
+                                ? "border-x border-blue-200 bg-blue-50 text-blue-800"
+                                : "border-l border-slate-200 text-blue-950 group-hover:bg-slate-50"
+                            }`}
+                          >
+                            {value.toFixed(
+                              2,
+                            )}
+                          </td>
                         );
-
-                      return (
-                        <td
-                          key={`${domain}-${impactCriterion}`}
-                          className={`${rowBorderClass} px-4 py-4 text-center text-base font-semibold transition-colors duration-200 ${
-                            showHighlight &&
-                            isFocused
-                              ? "border-x border-blue-200 bg-blue-50 text-blue-800"
-                              : "border-l border-slate-200 text-blue-950 group-hover:bg-slate-50"
-                          }`}
-                        >
-                          {value.toFixed(
-                            2,
-                          )}
-                        </td>
-                      );
-                    },
-                  )}
+                      },
+                    )}
                 </tr>
               );
             },

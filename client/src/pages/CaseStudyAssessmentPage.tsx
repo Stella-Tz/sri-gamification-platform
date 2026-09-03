@@ -1,93 +1,61 @@
 // client/src/pages/CaseStudyAssessmentPage.tsx
 
 import {
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
 
 import {
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 
+import {
+  useCaseStudyAssessmentData,
+} from "../features/caseStudy/hooks/useCaseStudyAssessmentData";
+
+import type {
+  CaseStudyAssessmentData,
+} from "../features/caseStudy/assessment/caseStudyAssessment.types";
+
+import {
+  useCaseStudyProgress as useSharedCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
+
 import PageState from "../components/ui/PageState";
-
-import ServiceAssessmentWorkspace from "../features/caseStudy/components/assessment/ServiceAssessmentWorkspace";
-
-import CaseStudyPageHeader from "../features/caseStudy/components/layout/CaseStudyPageHeader";
-import DomainSidebar from "../features/caseStudy/components/layout/DomainSidebar";
-
-import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
-
-import {
-  getSriServicesForAssessmentMethod,
-} from "../features/caseStudy/data/sriServiceCatalogue";
-
-import {
-  useCaseStudyAssessment,
-} from "../features/caseStudy/hooks/useCaseStudyAssessment";
-
-import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
-
-import {
-  calculateSriScore,
-} from "../features/caseStudy/utils/sriScoring.utils";
 
 import {
   CASE_STUDY_ROUTES,
 } from "../constants/routes";
 
-import type {
-  BuildingType,
-  CaseStudyDetails,
-  ClimateZone,
-  DomainPresence,
-  OfficialAssessmentMethod,
-  TechnicalDomainName,
-} from "../features/caseStudy/types/caseStudy.types";
+import {
+  toCaseStudyAssessmentService,
+} from "../features/caseStudy/assessment/caseStudyAssessment.presentation";
+
+import ServiceAssessmentWorkspace from "../features/caseStudy/components/assessment/ServiceAssessmentWorkspace";
+
+import CaseStudyPageHeader from "../features/caseStudy/components/layout/CaseStudyPageHeader";
+import CaseStudyReviewNotice from "../features/caseStudy/components/layout/CaseStudyReviewNotice";
+
+import DomainSidebar from "../features/caseStudy/components/layout/DomainSidebar";
+
+import {
+  useCaseStudyAssessment,
+} from "../features/caseStudy/hooks/useCaseStudyAssessment";
 
 import type {
   CaseStudyAssessmentProgress,
 } from "../features/caseStudy/progress/caseStudyProgress.types";
 
-type AssessmentLocationState = {
-  caseStudy?: CaseStudyDetails;
-
-  domainPresence?: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  assessmentMethod?:
-    OfficialAssessmentMethod;
-
-  buildingType?: BuildingType;
-  climateZone?: ClimateZone;
-};
+import type {
+  DomainPresence,
+  ServiceAnswer,
+  TechnicalDomainName,
+} from "../features/caseStudy/types/caseStudy.types";
 
 type CaseStudyAssessmentContentProps = {
-  caseStudy: CaseStudyDetails;
-
-  domainPresence: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  assessmentMethod:
-    OfficialAssessmentMethod;
-
-  buildingType: BuildingType;
-  climateZone: ClimateZone;
-
-  initialAssessmentProgress:
-    | CaseStudyAssessmentProgress
-    | null;
+  assessmentData:
+    CaseStudyAssessmentData;
 };
 
 const isDesktopViewport =
@@ -99,72 +67,18 @@ const isDesktopViewport =
 
 const CaseStudyAssessmentPage =
   () => {
-    const location =
-      useLocation();
-
     const {
-      getProgressForCaseStudy,
-    } = useCaseStudyProgress();
+      assessmentData,
+      isLoading,
+      error,
+    } =
+      useCaseStudyAssessmentData();
 
-    const state =
-      location.state as
-        | AssessmentLocationState
-        | null;
-
-    const caseStudy =
-      state?.caseStudy ??
-      caseStudyMockData[0] ??
-      null;
-
-    const savedProgress =
-      caseStudy
-        ? getProgressForCaseStudy(
-            caseStudy.id,
-          )
-        : null;
-
-    const savedSetup =
-      savedProgress?.setup ??
-      null;
-
-    const savedSetupAnswers =
-      savedSetup?.completed ===
-      true
-        ? savedSetup.answers
-        : null;
-
-    const domainPresence =
-      state?.domainPresence ??
-      savedSetupAnswers
-        ?.domainPresence ??
-      null;
-
-    const assessmentMethod =
-      state?.assessmentMethod ??
-      savedSetupAnswers
-        ?.methodologySelection
-        .assessmentMethod ??
-      null;
-
-    const buildingType =
-      state?.buildingType ??
-      savedSetupAnswers
-        ?.buildingInformation
-        .buildingType ??
-      null;
-
-    const climateZone =
-      state?.climateZone ??
-      savedSetupAnswers
-        ?.buildingInformation
-        .climateZone ??
-      null;
-
-    if (!caseStudy) {
+    if (isLoading) {
       return (
         <PageState
-          isLoading={false}
-          error="Case study not found."
+          isLoading={true}
+          error={null}
         >
           <div />
         </PageState>
@@ -172,15 +86,16 @@ const CaseStudyAssessmentPage =
     }
 
     if (
-      !domainPresence ||
-      !assessmentMethod ||
-      !buildingType ||
-      !climateZone
+      error ||
+      !assessmentData
     ) {
       return (
         <PageState
           isLoading={false}
-          error="Please complete the building setup before starting the assessment."
+          error={
+            error ??
+            "Assessment data is unavailable."
+          }
         >
           <div />
         </PageState>
@@ -189,23 +104,8 @@ const CaseStudyAssessmentPage =
 
     return (
       <CaseStudyAssessmentContent
-        caseStudy={caseStudy}
-        domainPresence={
-          domainPresence
-        }
-        assessmentMethod={
-          assessmentMethod
-        }
-        buildingType={
-          buildingType
-        }
-        climateZone={
-          climateZone
-        }
-        initialAssessmentProgress={
-          savedProgress
-            ?.assessment ??
-          null
+        assessmentData={
+          assessmentData
         }
       />
     );
@@ -213,12 +113,7 @@ const CaseStudyAssessmentPage =
 
 const CaseStudyAssessmentContent =
   ({
-    caseStudy,
-    domainPresence,
-    assessmentMethod,
-    buildingType,
-    climateZone,
-    initialAssessmentProgress,
+    assessmentData,
   }: CaseStudyAssessmentContentProps) => {
     const navigate =
       useNavigate();
@@ -229,76 +124,141 @@ const CaseStudyAssessmentContent =
       );
 
     const {
-      saveAssessmentProgress,
-      completeAssessment,
-    } = useCaseStudyProgress();
+      progress:
+        sharedProgress,
 
-    const catalogue =
-      useMemo(() => {
-        return getSriServicesForAssessmentMethod(
-          assessmentMethod,
-        );
-      }, [assessmentMethod]);
+      applyProgress,
+    } =
+      useSharedCaseStudyProgress();
+
+    const domainPresence =
+      assessmentData
+        .setup
+        .domainPresence as Record<
+          TechnicalDomainName,
+          DomainPresence | ""
+        >;
+
+    /*
+     * Backend Assessment services are now the
+     * canonical source of truth.
+     *
+     * This adapter performs only:
+     *
+     * serviceId -> id
+     * string domain -> TechnicalDomainName
+     *
+     * No frontend SRI catalogue is consulted.
+     */
+    const services =
+      useMemo(
+        () =>
+          assessmentData
+            .services
+            .map(
+              toCaseStudyAssessmentService,
+            ),
+        [
+          assessmentData
+            .services,
+        ],
+      );
+
+    const scenarioByServiceId =
+      useMemo(
+        () => {
+          return assessmentData
+            .services
+            .reduce<
+              Record<
+                string,
+                {
+                  evidence:
+                    string[];
+                }
+              >
+            >(
+              (
+                accumulator,
+                service,
+              ) => {
+                accumulator[
+                  service.serviceId
+                ] = {
+                  evidence: [
+                    ...service
+                      .scenarioEvidence,
+                  ],
+                };
+
+                return accumulator;
+              },
+              {},
+            );
+        },
+        [
+          assessmentData
+            .services,
+        ],
+      );
+
+    const initialAssessmentProgress =
+      useMemo<
+        CaseStudyAssessmentProgress
+      >(
+        () => ({
+          answers: {
+            ...assessmentData
+              .progress
+              .answers,
+          },
+
+          validatedServiceIds: [
+            ...assessmentData
+              .progress
+              .validatedServiceIds,
+          ],
+
+          selectedServiceId:
+            assessmentData
+              .progress
+              .selectedServiceId,
+
+          completed:
+            assessmentData
+              .progress
+              .completed,
+        }),
+        [
+          assessmentData
+            .progress,
+        ],
+      );
+
+    /*
+     * Once Assessment has been completed,
+     * returning to this route is review-only.
+     *
+     * Navigation between domains/services remains
+     * available so the learner can inspect the
+     * submitted assessment.
+     */
+    const isReviewMode =
+      assessmentData
+        .progress
+        .completed;
 
     const assessment =
       useCaseStudyAssessment({
-        caseStudy,
-        catalogue,
+        services,
+
         domainPresence,
+
+        scenarioByServiceId,
 
         initialProgress:
           initialAssessmentProgress,
       });
-
-    /*
-     * Persist every meaningful assessment
-     * change.
-     *
-     * A previously completed assessment stays
-     * completed until one of its answers changes.
-     */
-    useEffect(() => {
-      if (
-        assessment
-          .totalServicesCount ===
-        0
-      ) {
-        return;
-      }
-
-      saveAssessmentProgress(
-        caseStudy.id,
-        {
-          answers:
-            assessment.answers,
-
-          validatedServiceIds:
-            assessment
-              .validatedServiceIds,
-
-          selectedServiceId:
-            assessment
-              .selectedServiceId ||
-            null,
-
-          completed:
-            assessment
-              .isSavedAsCompleted,
-        },
-      );
-    }, [
-      assessment.answers,
-      assessment
-        .isSavedAsCompleted,
-      assessment
-        .selectedServiceId,
-      assessment
-        .totalServicesCount,
-      assessment
-        .validatedServiceIds,
-      caseStudy.id,
-      saveAssessmentProgress,
-    ]);
 
     useLayoutEffect(() => {
       const scrollContainer =
@@ -320,36 +280,40 @@ const CaseStudyAssessmentContent =
             '[data-assessment-error="true"]',
           );
 
-      if (!firstErrorSection) {
+      if (
+        !firstErrorSection
+      ) {
         return;
       }
 
-      /*
-       * Mobile / tablet:
-       * the document performs the scroll.
-       */
       if (
         !isDesktopViewport()
       ) {
-        requestAnimationFrame(() => {
-          firstErrorSection.scrollIntoView({
-            behavior: "auto",
-            block: "start",
-            inline: "nearest",
-          });
+        requestAnimationFrame(
+          () => {
+            firstErrorSection
+              .scrollIntoView({
+                behavior:
+                  "auto",
 
-          firstErrorSection.focus({
-            preventScroll: true,
-          });
-        });
+                block:
+                  "start",
+
+                inline:
+                  "nearest",
+              });
+
+            firstErrorSection
+              .focus({
+                preventScroll:
+                  true,
+              });
+          },
+        );
 
         return;
       }
 
-      /*
-       * Desktop:
-       * only the assessment main area scrolls.
-       */
       const containerRect =
         scrollContainer
           .getBoundingClientRect();
@@ -366,82 +330,49 @@ const CaseStudyAssessmentContent =
         24;
 
       scrollContainer.scrollTo({
-        top: Math.max(
-          0,
-          targetScrollTop,
-        ),
+        top:
+          Math.max(
+            0,
+            targetScrollTop,
+          ),
 
-        behavior: "auto",
+        behavior:
+          "auto",
       });
 
       firstErrorSection.focus({
-        preventScroll: true,
+        preventScroll:
+          true,
       });
     }, [
-      assessment.errorsByField,
+      assessment
+        .errorsByField,
     ]);
-
-    const serviceApplicability =
-      useMemo<
-        Record<string, boolean>
-      >(
-        () => {
-          const applicableServiceIds =
-            new Set(
-              assessment
-                .services
-                .map(
-                  (service) =>
-                    service.id,
-                ),
-            );
-
-          return catalogue.reduce<
-            Record<string, boolean>
-          >(
-            (
-              accumulator,
-              service,
-            ) => {
-              accumulator[
-                service.id
-              ] =
-                applicableServiceIds
-                  .has(
-                    service.id,
-                  );
-
-              return accumulator;
-            },
-            {},
-          );
-        },
-        [
-          assessment.services,
-          catalogue,
-        ],
-      );
 
     const excludedDomains =
       useMemo(
         () => [
           ...assessment
             .absentMandatoryDomains
-            .map((domain) => ({
-              domain,
+            .map(
+              (domain) => ({
+                domain,
 
-              reason:
-                "Absent but mandatory. Its relevant services are taken into account when calculating the maximum obtainable score.",
-            })),
+                reason:
+                  "Absent but mandatory. Its relevant services are taken into account when calculating the maximum obtainable score.",
+              }),
+            ),
 
           ...assessment
             .absentNotMandatoryDomains
-            .map((domain) => ({
-              domain,
+            .map(
+              (domain) => ({
+                domain,
 
-              reason:
-                "Absent and not mandatory. Excluded from the assessment scope.",
-            })),
+                reason:
+                  "Absent and not mandatory. Excluded from the assessment scope.",
+              }),
+            ),
         ],
         [
           assessment
@@ -457,56 +388,90 @@ const CaseStudyAssessmentContent =
         const scrollContainer =
           mainScrollRef.current;
 
-        if (!scrollContainer) {
+        if (
+          !scrollContainer
+        ) {
           return;
         }
 
         if (
           isDesktopViewport()
         ) {
-          scrollContainer.scrollTo(
-            {
-              top: 0,
-              behavior: "auto",
-            },
-          );
+          scrollContainer.scrollTo({
+            top: 0,
+
+            behavior:
+              "auto",
+          });
 
           return;
         }
 
         window.scrollTo({
           top: 0,
-          behavior: "auto",
+
+          behavior:
+            "auto",
         });
+      };
+
+    const handleChangeAnswer =
+      (
+        answer:
+          ServiceAnswer,
+      ) => {
+        if (isReviewMode) {
+          return;
+        }
+
+        assessment
+          .onChangeAnswer(
+            answer,
+          );
       };
 
     const handlePreviousService =
       () => {
-        assessment
-          .goToPreviousService();
+        const previousServiceId =
+          assessment
+            .goToPreviousService();
 
-        scrollAssessmentToTop();
+        if (
+          previousServiceId
+        ) {
+          scrollAssessmentToTop();
+        }
       };
 
     const handleSaveAndNext =
-      () => {
-        const wasSaved =
-          assessment
+      async () => {
+        const success =
+          await assessment
             .saveAndNext();
 
-        if (wasSaved) {
+        if (
+          success
+        ) {
           scrollAssessmentToTop();
         }
       };
 
     const handleSelectService =
       (
-        serviceId: string,
+        serviceId:
+          string,
       ) => {
-        assessment
-          .onSelectService(
-            serviceId,
-          );
+        const selectedServiceId =
+          assessment
+            .onSelectService(
+              serviceId,
+            );
+
+        if (
+          !selectedServiceId
+        ) {
+          return;
+        }
 
         scrollAssessmentToTop();
       };
@@ -516,122 +481,49 @@ const CaseStudyAssessmentContent =
         domain:
           TechnicalDomainName,
       ) => {
-        assessment
-          .onSelectDomain(
-            domain,
-          );
+        const selectedServiceId =
+          assessment
+            .onSelectDomain(
+              domain,
+            );
+
+        if (
+          !selectedServiceId
+        ) {
+          return;
+        }
 
         scrollAssessmentToTop();
       };
 
     const handleSubmitAssessment =
-      () => {
-        const currentServiceIsValid =
-          assessment
-            .validateCurrentService();
+      async () => {
+        const submission =
+          await assessment
+            .submit();
 
         if (
-          !currentServiceIsValid ||
-          !assessment
-            .selectedService
+          !submission
         ) {
           return;
         }
 
-        const selectedServiceId =
-          assessment
-            .selectedService.id;
-
-        const finalValidatedServiceIds =
-          assessment
-            .validatedServiceIds
-            .includes(
-              selectedServiceId,
-            )
-            ? assessment
-                .validatedServiceIds
-            : [
-                ...assessment
-                  .validatedServiceIds,
-
-                selectedServiceId,
-              ];
-
-        const allServicesValidated =
-          assessment.services.every(
-            (service) =>
-              finalValidatedServiceIds
-                .includes(
-                  service.id,
-                ),
-          );
-
-        if (
-          !allServicesValidated
-        ) {
-          return;
-        }
-
-        const result =
-          calculateSriScore({
-            services: catalogue,
-
-            answers:
-              assessment.answers,
-
-            assessmentMethod,
-            serviceApplicability,
-            domainPresence,
-            buildingType,
-            climateZone,
-          });
+        const submitResponse =
+          submission.result;
 
         /*
-         * Persist the full baseline assessment
-         * before leaving the page.
+         * Apply the canonical journey state
+         * before navigating so RouteGuard
+         * immediately knows Results is allowed.
          */
-        completeAssessment(
-          caseStudy.id,
-          {
-            answers:
-              assessment.answers,
-
-            validatedServiceIds:
-              finalValidatedServiceIds,
-
-            selectedServiceId,
-
-            completed: true,
-          },
-          result,
+        applyProgress(
+          submitResponse
+            .progress,
         );
 
-        /*
-         * Route state remains temporarily for
-         * compatibility with the current Results
-         * and Guided Improvement pages.
-         */
         navigate(
           CASE_STUDY_ROUTES
             .results,
-          {
-            state: {
-              result,
-              caseStudy,
-
-              answers:
-                assessment.answers,
-
-              assessmentMethod,
-              serviceApplicability,
-              domainPresence,
-              buildingType,
-              climateZone,
-
-              services:
-                catalogue,
-            },
-          },
         );
       };
 
@@ -690,7 +582,9 @@ const CaseStudyAssessmentContent =
           />
 
           <main
-            ref={mainScrollRef}
+            ref={
+              mainScrollRef
+            }
             aria-label="Service assessment"
             className="
               min-w-0
@@ -709,6 +603,14 @@ const CaseStudyAssessmentContent =
               <div className="mx-auto w-full min-w-0 max-w-[1120px]">
                 <CaseStudyPageHeader
                   currentStage="service-assessment"
+                  allowedStages={
+                    sharedProgress
+                      ?.allowedStages
+                  }
+                  nextStage={
+                    sharedProgress
+                      ?.nextStage
+                  }
                   progress={{
                     label:
                       "Assessment Progress",
@@ -723,6 +625,12 @@ const CaseStudyAssessmentContent =
                   }}
                 />
 
+                {isReviewMode ? (
+                  <div className="mt-6">
+                    <CaseStudyReviewNotice />
+                  </div>
+                ) : null}
+
                 <div className="mt-8 min-w-0 max-w-full lg:hidden">
                   <DomainSidebar
                     {...domainNavigationProps}
@@ -730,8 +638,25 @@ const CaseStudyAssessmentContent =
                   />
                 </div>
 
+                {!isReviewMode &&
+                assessment
+                  .actionError ? (
+                  <p
+                    role="alert"
+                    className="mt-6 text-sm font-semibold text-red-600"
+                  >
+                    {
+                      assessment
+                        .actionError
+                    }
+                  </p>
+                ) : null}
+
                 <section className="mt-6 min-w-0 max-w-full lg:mt-10">
                   <ServiceAssessmentWorkspace
+                    isReviewMode={
+                      isReviewMode
+                    }
                     services={
                       assessment
                         .selectedDomainServices
@@ -745,11 +670,11 @@ const CaseStudyAssessmentContent =
                         .selectedServiceId
                     }
                     answers={
-                      assessment.answers
+                      assessment
+                        .answers
                     }
                     onChangeAnswer={
-                      assessment
-                        .onChangeAnswer
+                      handleChangeAnswer
                     }
                     errorsByField={
                       assessment
@@ -777,12 +702,12 @@ const CaseStudyAssessmentContent =
                     onPrevious={
                       handlePreviousService
                     }
-                    onSaveAndNext={
-                      handleSaveAndNext
-                    }
-                    onSubmitAssessment={
-                      handleSubmitAssessment
-                    }
+                    onSaveAndNext={() => {
+                      void handleSaveAndNext();
+                    }}
+                    onSubmitAssessment={() => {
+                      void handleSubmitAssessment();
+                    }}
                     isFinalRemainingService={
                       assessment
                         .isFinalRemainingService

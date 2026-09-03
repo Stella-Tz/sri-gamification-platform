@@ -9,9 +9,12 @@ import {
 } from "lucide-react";
 
 import type {
-  CaseStudySubmitResult,
   KeyFunctionalityName,
 } from "../../types/caseStudy.types";
+
+import type {
+  CaseStudyResultsPublicResult,
+} from "../../results/caseStudyResults.types";
 
 type FunctionalityTone =
   | "green"
@@ -30,7 +33,7 @@ type ResolvedKeyFunctionalityItem =
   };
 
 type ResultsHeroCardProps = {
-  result: CaseStudySubmitResult;
+  result: CaseStudyResultsPublicResult;
 };
 
 const keyFunctionalities:
@@ -92,7 +95,7 @@ const ResultsHeroCard = ({
 };
 
 type OverallSriScoreCardProps = {
-  result: CaseStudySubmitResult;
+  result: CaseStudyResultsPublicResult;
 };
 
 const OverallSriScoreCard = ({
@@ -410,7 +413,7 @@ const SriScoreGauge = ({
 };
 
 const resolveKeyFunctionalityScores = (
-  result: CaseStudySubmitResult,
+  result: CaseStudyResultsPublicResult,
 ): ResolvedKeyFunctionalityItem[] | null => {
   const resolvedItems:
     ResolvedKeyFunctionalityItem[] = [];
@@ -500,7 +503,7 @@ const formatScore = (
 
 const getSriClassRange = (
   sriClass:
-    CaseStudySubmitResult["sriClass"],
+    CaseStudyResultsPublicResult["sriClass"],
 ) => {
   switch (sriClass) {
     case "A":

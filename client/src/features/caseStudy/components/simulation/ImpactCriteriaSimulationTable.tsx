@@ -12,12 +12,15 @@ import {
 } from "../../data/sriOfficialConstants";
 
 import type {
+  CaseStudySimulationResult,
+} from "../../simulation/caseStudySimulation.types";
+
+import type {
   ImpactCriterionName,
-  SimulationResult,
 } from "../../types/caseStudy.types";
 
 type ImpactCriteriaSimulationTableProps = {
-  result: SimulationResult;
+  result: CaseStudySimulationResult;
 };
 
 const SIMULATION_EPSILON = 1e-9;
@@ -221,7 +224,7 @@ const ImpactCriteriaSimulationTable = ({
 };
 
 const resolveImpactComparisonRows = (
-  result: SimulationResult,
+  result: CaseStudySimulationResult,
 ): ImpactComparisonRow[] | null => {
   const rows:
     ImpactComparisonRow[] = [];

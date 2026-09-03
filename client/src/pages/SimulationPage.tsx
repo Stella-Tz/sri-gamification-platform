@@ -1,3 +1,5 @@
+// client/src/pages/SimulationPage.tsx
+
 import {
   useLayoutEffect,
   type ReactNode,
@@ -8,8 +10,8 @@ import {
 } from "lucide-react";
 
 import {
-  useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 
 import PrimaryButton from "../components/ui/PrimaryButton";
@@ -21,32 +23,60 @@ import {
 
 import CaseStudyPageHeader from "../features/caseStudy/components/layout/CaseStudyPageHeader";
 
+import RouteLoadingState from "../components/ui/RouteLoadingState";
+
 import SimulationCompletionCard from "../features/caseStudy/components/simulation/SimulationCompletionCard";
+
 import SimulationResultsSection from "../features/caseStudy/components/simulation/SimulationResultsSection";
 
 import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
+  useCaseStudyProgress as useSharedCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
 
-import type {
-  SimulationResult,
-} from "../features/caseStudy/types/caseStudy.types";
-
-type SimulationLocationState = {
-  simulationResult?:
-    SimulationResult;
-};
+import {
+  useCaseStudySimulation,
+} from "../features/caseStudy/hooks/useCaseStudySimulation";
 
 const SimulationPage = () => {
-  const location =
-    useLocation();
-
   const navigate =
     useNavigate();
 
   const {
-    activeCaseStudy,
-  } = useCaseStudyProgress();
+    progress:
+      sharedProgress,
+  } =
+    useSharedCaseStudyProgress();
+
+  const [
+    searchParams,
+  ] =
+    useSearchParams();
+
+  const simulationPreference =
+    searchParams.get(
+      "source",
+    ) === "official"
+      ? "official"
+      : "default";
+
+  /*
+   * The hook already returns the canonical
+   * backend Simulation result.
+   *
+   * No presentation reconstruction,
+   * no shortTitle enrichment and
+   * no route-state result are required.
+   */
+  const {
+    simulationResult,
+
+    isLoading,
+    error,
+  } =
+    useCaseStudySimulation({
+      preference:
+        simulationPreference,
+    });
 
   useLayoutEffect(() => {
     window.scrollTo({
@@ -54,31 +84,7 @@ const SimulationPage = () => {
       left: 0,
       behavior: "auto",
     });
-  }, [location.key]);
-
-  const state =
-    location.state as
-      | SimulationLocationState
-      | null;
-
-  /*
-   * Normal navigation uses route state.
-   *
-   * During the active attempt, refresh/direct
-   * navigation restores the current simulation.
-   *
-   * After Practice Again clears the active attempt,
-   * the permanent first official Case Study result
-   * remains available as the final fallback.
-   */
-  const simulationResult =
-    state?.simulationResult ??
-    activeCaseStudy
-      ?.simulationResult ??
-    activeCaseStudy
-      ?.officialResult
-      ?.simulationResult ??
-    null;
+  }, []);
 
   const handleReturnDashboard =
     () => {
@@ -102,10 +108,25 @@ const SimulationPage = () => {
       );
     };
 
-  if (!simulationResult) {
+  if (isLoading) {
+    return (
+      <RouteLoadingState
+        label="Loading simulation results..."
+      />
+    );
+  }
+
+  if (
+    error ||
+    !simulationResult
+  ) {
     return (
       <SimulationPageLayout>
         <SimulationPageErrorState
+          description={
+            error ??
+            "No completed simulation result is available. Open the Guided Improvement Analysis and run the recommended service upgrade again."
+          }
           onBackToImprovement={
             handleBackToImprovement
           }
@@ -124,6 +145,14 @@ const SimulationPage = () => {
     <SimulationPageLayout>
       <CaseStudyPageHeader
         currentStage="simulation-results"
+        allowedStages={
+          sharedProgress
+            ?.allowedStages
+        }
+        nextStage={
+          sharedProgress
+            ?.nextStage
+        }
       />
 
       <div className="mt-10 min-w-0 max-w-full space-y-6">
@@ -144,7 +173,8 @@ const SimulationPage = () => {
 };
 
 type SimulationPageLayoutProps = {
-  children: ReactNode;
+  children:
+    ReactNode;
 };
 
 const SimulationPageLayout = ({
@@ -160,6 +190,9 @@ const SimulationPageLayout = ({
 };
 
 type SimulationPageErrorStateProps = {
+  description:
+    string;
+
   onBackToImprovement:
     () => void;
 
@@ -171,6 +204,7 @@ type SimulationPageErrorStateProps = {
 };
 
 const SimulationPageErrorState = ({
+  description,
   onBackToImprovement,
   onBackToCaseStudy,
   onReturnDashboard,
@@ -194,7 +228,7 @@ const SimulationPageErrorState = ({
             </h1>
 
             <p className="mt-3 text-sm font-semibold leading-6 text-amber-800">
-              No completed simulation result is available. Open the Guided Improvement Analysis and run the recommended service upgrade again.
+              {description}
             </p>
           </div>
         </div>

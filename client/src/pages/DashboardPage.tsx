@@ -1,6 +1,8 @@
 // client/src/pages/DashboardPage.tsx
 
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
 import PageState from "../components/ui/PageState";
@@ -9,20 +11,28 @@ import {
   CASE_STUDY_ROUTES,
 } from "../constants/routes";
 
+import {
+  useCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
+
 import AchievementsRow from "../features/dashboard/components/AchievementsRow";
+
 import AssessmentProgressCard from "../features/dashboard/components/AssessmentProgressCard";
+
 import CaseStudySummaryCard from "../features/dashboard/components/CaseStudySummaryCard";
+
 import CourseProgressCard from "../features/dashboard/components/CourseProgressCard";
+
 import LearningJourneyCard from "../features/dashboard/components/LearningJourneyCard";
+
 import NextActionCard from "../features/dashboard/components/NextActionCard";
 
 import {
   useDashboard,
 } from "../features/dashboard/hooks/useDashboard";
 
-import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
+const OFFICIAL_SIMULATION_RESULTS_PATH =
+  `${CASE_STUDY_ROUTES.simulationResults}?source=official`;
 
 const DashboardPage = () => {
   const navigate =
@@ -32,11 +42,14 @@ const DashboardPage = () => {
     dashboard,
     isLoading,
     error,
-  } = useDashboard();
+  } =
+    useDashboard();
 
   const {
-    startNewPracticeAttempt,
-  } = useCaseStudyProgress();
+    startPracticeAgain,
+    isStartingPracticeAgain,
+  } =
+    useCaseStudyProgress();
 
   const handlePrimaryAction =
     () => {
@@ -45,67 +58,54 @@ const DashboardPage = () => {
       }
 
       navigate(
-        dashboard.nextAction.path,
+        dashboard
+          .nextAction
+          .path,
       );
     };
 
   const handlePracticeAgain =
-    () => {
-      const caseStudyId =
-        dashboard
-          ?.caseStudy
-          .id;
-
-      if (!caseStudyId) {
+    async () => {
+      if (
+        !dashboard ||
+        isStartingPracticeAgain
+      ) {
         return;
       }
 
-      startNewPracticeAttempt(
-        caseStudyId,
-      );
+      const nextProgress =
+        await startPracticeAgain();
+
+      if (!nextProgress) {
+        return;
+      }
 
       navigate(
-        CASE_STUDY_ROUTES.setup,
+        CASE_STUDY_ROUTES
+          .setup,
       );
     };
 
   const handleViewAssessmentResults =
     () => {
       navigate(
-        CASE_STUDY_ROUTES.results,
+        CASE_STUDY_ROUTES
+          .results,
       );
     };
 
   const handleViewSimulationResults =
     () => {
-      if (!dashboard) {
-        return;
-      }
-
-      const officialSimulationResult =
-        dashboard
-          .caseStudySummary
-          .officialSimulationResult;
-
-      if (!officialSimulationResult) {
-        return;
-      }
-
       navigate(
-        CASE_STUDY_ROUTES
-          .simulationResults,
-        {
-          state: {
-            simulationResult:
-              officialSimulationResult,
-          },
-        },
+        OFFICIAL_SIMULATION_RESULTS_PATH,
       );
     };
 
   return (
     <PageState
-      isLoading={isLoading}
+      isLoading={
+        isLoading
+      }
       error={error}
       isEmpty={!dashboard}
       loadingText="Loading dashboard..."
@@ -186,7 +186,9 @@ const DashboardPage = () => {
                     .nextAction
                     .state ===
                   "review-case-study"
-                    ? handlePracticeAgain
+                    ? () => {
+                        void handlePracticeAgain();
+                      }
                     : undefined
                 }
               />
@@ -251,7 +253,7 @@ const DashboardPage = () => {
                     "completed" &&
                   dashboard
                     .caseStudySummary
-                    .officialSimulationResult
+                    .simulationResult
                     ? handleViewSimulationResults
                     : undefined
                 }

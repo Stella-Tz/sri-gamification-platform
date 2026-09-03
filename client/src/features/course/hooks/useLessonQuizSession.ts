@@ -9,22 +9,29 @@ import {
 
 import {
   courseApi,
-  type LessonQuizCompletionAnswer,
 } from "../../../api/courseApi";
 
 import type {
   CourseQuestion,
+  LessonQuizCompletionAnswer,
   LessonQuizFeedback,
+  UserCourseProgress,
 } from "../course.types";
 
 type UseLessonQuizSessionOptions = {
   quizId: string;
   enabled?: boolean;
+
+  onProgressChange?: (
+    progress:
+      UserCourseProgress,
+  ) => void;
 };
 
 export const useLessonQuizSession = ({
   quizId,
   enabled = true,
+  onProgressChange,
 }: UseLessonQuizSessionOptions) => {
   const [
     questions,
@@ -120,18 +127,32 @@ export const useLessonQuizSession = ({
 
   const resetQuestionState =
     useCallback(() => {
-      setSelectedOptionId(null);
-      setFeedback("idle");
+      setSelectedOptionId(
+        null,
+      );
 
-      setCorrectOptionId(null);
-      setExplanation(null);
+      setFeedback(
+        "idle",
+      );
 
-      setError(null);
+      setCorrectOptionId(
+        null,
+      );
+
+      setExplanation(
+        null,
+      );
+
+      setError(
+        null,
+      );
     }, []);
 
   const resetSession =
     useCallback(() => {
-      setCurrentQuestionIndex(0);
+      setCurrentQuestionIndex(
+        0,
+      );
 
       setAnswersByQuestionId(
         {},
@@ -142,51 +163,62 @@ export const useLessonQuizSession = ({
 
   useEffect(() => {
     resetSession();
-
     setQuestions([]);
 
     if (!enabled) {
-      setIsLoading(false);
+      setIsLoading(
+        false,
+      );
       return;
     }
 
     let cancelled = false;
 
-    const loadQuiz = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const quiz =
-          await courseApi.getLessonQuiz(
-            quizId,
+    const loadQuiz =
+      async () => {
+        try {
+          setIsLoading(
+            true,
           );
 
-        if (cancelled) {
-          return;
-        }
+          setError(
+            null,
+          );
 
-        setQuestions(
-          quiz.questions,
-        );
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
+          const quiz =
+            await courseApi
+              .getLessonQuiz(
+                quizId,
+              );
 
-        setQuestions([]);
+          if (cancelled) {
+            return;
+          }
 
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load quiz.",
-        );
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
+          setQuestions(
+            quiz.questions,
+          );
+        } catch (loadError) {
+          if (cancelled) {
+            return;
+          }
+
+          setQuestions([]);
+
+          setError(
+            loadError instanceof
+              Error
+              ? loadError.message
+              : "Failed to load quiz.",
+          );
+        } finally {
+          if (!cancelled) {
+            setIsLoading(
+              false,
+            );
+          }
         }
-      }
-    };
+      };
 
     void loadQuiz();
 
@@ -216,10 +248,14 @@ export const useLessonQuizSession = ({
         if (
           feedback === "empty"
         ) {
-          setFeedback("idle");
+          setFeedback(
+            "idle",
+          );
         }
 
-        setError(null);
+        setError(
+          null,
+        );
       },
       [
         feedback,
@@ -230,7 +266,9 @@ export const useLessonQuizSession = ({
 
   const submitAnswer =
     useCallback(
-      async (): Promise<boolean> => {
+      async (): Promise<
+        boolean
+      > => {
         if (
           !currentQuestion ||
           isSubmitted ||
@@ -240,7 +278,10 @@ export const useLessonQuizSession = ({
         }
 
         if (!selectedOptionId) {
-          setFeedback("empty");
+          setFeedback(
+            "empty",
+          );
+
           return false;
         }
 
@@ -249,20 +290,23 @@ export const useLessonQuizSession = ({
             true,
           );
 
-          setError(null);
+          setError(
+            null,
+          );
 
           const result =
-            await courseApi.validateLessonQuizAnswer(
-              {
-                quizStepId:
-                  quizId,
+            await courseApi
+              .validateLessonQuizAnswer(
+                {
+                  quizStepId:
+                    quizId,
 
-                questionId:
-                  currentQuestion.id,
+                  questionId:
+                    currentQuestion.id,
 
-                selectedOptionId,
-              },
-            );
+                  selectedOptionId,
+                },
+              );
 
           setCorrectOptionId(
             result.correctOptionId,
@@ -279,7 +323,9 @@ export const useLessonQuizSession = ({
           );
 
           setAnswersByQuestionId(
-            (currentAnswers) => ({
+            (
+              currentAnswers,
+            ) => ({
               ...currentAnswers,
 
               [currentQuestion.id]:
@@ -388,53 +434,74 @@ export const useLessonQuizSession = ({
     );
 
   const completeQuiz =
-    useCallback(async () => {
-      if (
-        totalQuestions === 0 ||
-        answers.length !==
-          totalQuestions
-      ) {
-        throw new Error(
-          "All quiz questions must be answered before completion.",
-        );
-      }
+    useCallback(
+      async () => {
+        if (
+          totalQuestions === 0 ||
+          answers.length !==
+            totalQuestions
+        ) {
+          throw new Error(
+            "All quiz questions must be answered before completion.",
+          );
+        }
 
-      try {
-        setIsCompletingQuiz(
-          true,
-        );
+        try {
+          setIsCompletingQuiz(
+            true,
+          );
 
-        setError(null);
+          setError(
+            null,
+          );
 
-        return await courseApi.completeLessonQuiz(
-          {
-            quizStepId: quizId,
-            answers,
-          },
-        );
-      } catch (completionError) {
-        setError(
-          completionError instanceof
-            Error
-            ? completionError.message
-            : "Failed to complete quiz.",
-        );
+          const nextProgress =
+            await courseApi
+              .completeLessonQuiz(
+                {
+                  quizStepId:
+                    quizId,
 
-        throw completionError;
-      } finally {
-        setIsCompletingQuiz(
-          false,
-        );
-      }
-    }, [
-      answers,
-      quizId,
-      totalQuestions,
-    ]);
+                  answers,
+                },
+              );
+
+          /*
+           * The completion endpoint already
+           * returns canonical Course progress.
+           * Apply it immediately to the shared
+           * CourseProgressProvider state.
+           */
+          onProgressChange?.(
+            nextProgress,
+          );
+
+          return nextProgress;
+        } catch (completionError) {
+          setError(
+            completionError instanceof
+              Error
+              ? completionError.message
+              : "Failed to complete quiz.",
+          );
+
+          throw completionError;
+        } finally {
+          setIsCompletingQuiz(
+            false,
+          );
+        }
+      },
+      [
+        answers,
+        onProgressChange,
+        quizId,
+        totalQuestions,
+      ],
+    );
 
   return {
     questions,
-
     currentQuestion,
     currentQuestionIndex,
     currentQuestionNumber,
@@ -442,12 +509,10 @@ export const useLessonQuizSession = ({
 
     selectedOptionId,
     selectedOption,
-
     correctOptionId,
     explanation,
 
     feedback,
-
     isSubmitted,
     isLastQuestion,
 

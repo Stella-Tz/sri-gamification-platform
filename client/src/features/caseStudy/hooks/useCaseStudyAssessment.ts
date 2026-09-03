@@ -2,20 +2,32 @@
 
 import {
   useMemo,
+  useRef,
   useState,
 } from "react";
 
+import {
+  caseStudyApi,
+} from "../../../api/caseStudyApi";
+
 import type {
-  CaseStudyDetails,
+  CaseStudyAssessmentData,
+} from "../assessment/caseStudyAssessment.types";
+
+import {
+  groupCaseStudyAssessmentServicesByDomain,
+  type CaseStudyAssessmentService,
+} from "../assessment/caseStudyAssessment.presentation";
+
+import type {
   DomainPresence,
   ServiceAnswer,
-  SriService,
   TechnicalDomainName,
 } from "../types/caseStudy.types";
 
-import type {
-  CaseStudyAssessmentProgress,
-} from "../progress/caseStudyProgress.types";
+import {
+  createDefaultServiceAnswer,
+} from "../utils/caseStudyInitialState.utils";
 
 import {
   getAbsentMandatoryDomains,
@@ -24,83 +36,116 @@ import {
 } from "../utils/domainPresence.utils";
 
 import {
-  createDefaultServiceAnswer,
-  createDefaultServiceAnswers,
-} from "../utils/caseStudyInitialState.utils";
-
-import {
-  mapSelectedServicesToCatalogue,
-} from "../utils/assessment.utils";
-
-import {
-  groupCatalogueServicesByDomain,
-} from "../utils/serviceCatalogue.utils";
-
-import {
-  isAssessmentServiceAnswerCorrect,
-  validateAssessmentServiceAnswer,
-} from "../utils/caseStudyScenarioValidation.utils";
-
-import {
   prefixValidationErrors,
 } from "../utils/validationMerge.utils";
 
-type UseCaseStudyAssessmentParams = {
-  caseStudy: CaseStudyDetails;
+type AssessmentProgressSnapshot =
+  CaseStudyAssessmentData["progress"];
 
-  catalogue: SriService[];
+type UseCaseStudyAssessmentParams = {
+  services:
+    CaseStudyAssessmentService[];
 
   domainPresence: Record<
     TechnicalDomainName,
     DomainPresence | ""
   >;
 
+  scenarioByServiceId: Record<
+    string,
+    {
+      evidence:
+        string[];
+    }
+  >;
+
   initialProgress?:
-    | CaseStudyAssessmentProgress
+    | AssessmentProgressSnapshot
     | null;
 };
 
-type ServiceScenarioViewModel = {
-  evidence: string[];
+type AssessmentSubmitSuccess = {
+  result:
+    Awaited<
+      ReturnType<
+        typeof caseStudyApi.submitAssessment
+      >
+    >;
+
+  validatedServiceIds:
+    string[];
+
+  selectedServiceId:
+    string;
 };
 
 const createInitialAnswers = ({
   services,
   initialProgress,
 }: {
-  services: SriService[];
+  services:
+    CaseStudyAssessmentService[];
 
   initialProgress:
-    | CaseStudyAssessmentProgress
+    | AssessmentProgressSnapshot
     | null;
-}): Record<string, ServiceAnswer> => {
+}): Record<
+  string,
+  ServiceAnswer
+> => {
   const initialAnswers =
-    createDefaultServiceAnswers(
-      services,
+    services.reduce<
+      Record<
+        string,
+        ServiceAnswer
+      >
+    >(
+      (
+        accumulator,
+        service,
+      ) => {
+        accumulator[
+          service.id
+        ] =
+          createDefaultServiceAnswer(
+            service.id,
+          );
+
+        return accumulator;
+      },
+      {},
     );
 
-  if (!initialProgress) {
+  if (
+    !initialProgress
+  ) {
     return initialAnswers;
   }
 
-  services.forEach((service) => {
-    const savedAnswer =
-      initialProgress.answers[
-        service.id
-      ];
+  services.forEach(
+    (service) => {
+      const savedAnswer =
+        initialProgress
+          .answers[
+            service.id
+          ];
 
-    if (
-      !savedAnswer ||
-      savedAnswer.serviceId !==
-        service.id
-    ) {
-      return;
-    }
+      if (
+        !savedAnswer ||
+        savedAnswer
+          .serviceId !==
+          service.id
+      ) {
+        return;
+      }
 
-    initialAnswers[service.id] = {
-      ...savedAnswer,
-    };
-  });
+      initialAnswers[
+        service.id
+      ] = {
+        ...savedAnswer,
+      };
+    },
+  );
 
   return initialAnswers;
 };
@@ -110,13 +155,16 @@ const createInitialValidatedServiceIds =
     services,
     initialProgress,
   }: {
-    services: SriService[];
+    services:
+      CaseStudyAssessmentService[];
 
     initialProgress:
-      | CaseStudyAssessmentProgress
+      | AssessmentProgressSnapshot
       | null;
   }): string[] => {
-    if (!initialProgress) {
+    if (
+      !initialProgress
+    ) {
       return [];
     }
 
@@ -130,10 +178,11 @@ const createInitialValidatedServiceIds =
 
     return initialProgress
       .validatedServiceIds
-      .filter((serviceId) =>
-        serviceIds.has(
-          serviceId,
-        ),
+      .filter(
+        (serviceId) =>
+          serviceIds.has(
+            serviceId,
+          ),
       );
   };
 
@@ -143,13 +192,14 @@ const getInitialSelectedServiceId =
     validatedServiceIds,
     initialProgress,
   }: {
-    services: SriService[];
+    services:
+      CaseStudyAssessmentService[];
 
     validatedServiceIds:
       string[];
 
     initialProgress:
-      | CaseStudyAssessmentProgress
+      | AssessmentProgressSnapshot
       | null;
   }): string => {
     const savedSelectedServiceId =
@@ -176,145 +226,236 @@ const getInitialSelectedServiceId =
     const firstIncompleteService =
       services.find(
         (service) =>
-          !validatedServiceIds.includes(
-            service.id,
-          ),
+          !validatedServiceIds
+            .includes(
+              service.id,
+            ),
       );
 
     return (
-      firstIncompleteService?.id ??
+      firstIncompleteService
+        ?.id ??
       services[0]?.id ??
       ""
     );
   };
 
 export const useCaseStudyAssessment = ({
-  caseStudy,
-  catalogue,
+  services,
   domainPresence,
+  scenarioByServiceId,
   initialProgress = null,
 }: UseCaseStudyAssessmentParams) => {
-  const services = useMemo(() => {
-    return mapSelectedServicesToCatalogue(
-      caseStudy.selectedServices,
-      catalogue,
-    );
-  }, [
-    caseStudy.selectedServices,
-    catalogue,
-  ]);
+  // ---------------------------------------------------------------------------
+  // Presentation-derived collections
+  // ---------------------------------------------------------------------------
 
   const servicesByDomain =
-    useMemo(() => {
-      return groupCatalogueServicesByDomain(
+    useMemo(
+      () =>
+        groupCaseStudyAssessmentServicesByDomain(
+          services,
+        ),
+      [
         services,
-      );
-    }, [services]);
+      ],
+    );
 
   const presentDomains =
-    useMemo(() => {
-      return getPresentDomains(
+    useMemo(
+      () =>
+        getPresentDomains(
+          domainPresence,
+        ),
+      [
         domainPresence,
-      );
-    }, [domainPresence]);
+      ],
+    );
 
   const absentMandatoryDomains =
-    useMemo(() => {
-      return getAbsentMandatoryDomains(
+    useMemo(
+      () =>
+        getAbsentMandatoryDomains(
+          domainPresence,
+        ),
+      [
         domainPresence,
-      );
-    }, [domainPresence]);
+      ],
+    );
 
   const absentNotMandatoryDomains =
-    useMemo(() => {
-      return getAbsentNotMandatoryDomains(
+    useMemo(
+      () =>
+        getAbsentNotMandatoryDomains(
+          domainPresence,
+        ),
+      [
         domainPresence,
-      );
-    }, [domainPresence]);
+      ],
+    );
 
   const domainsWithServices =
-    useMemo(() => {
-      return presentDomains.filter(
-        (domain) =>
-          servicesByDomain[
-            domain
-          ].length > 0,
-      );
-    }, [
-      presentDomains,
-      servicesByDomain,
-    ]);
+    useMemo(
+      () =>
+        presentDomains.filter(
+          (domain) =>
+            servicesByDomain[
+              domain
+            ].length > 0,
+        ),
+      [
+        presentDomains,
+        servicesByDomain,
+      ],
+    );
+
+  // ---------------------------------------------------------------------------
+  // Assessment UI state
+  // ---------------------------------------------------------------------------
 
   const [
     answers,
     setAnswers,
   ] = useState<
-    Record<string, ServiceAnswer>
-  >(() =>
-    createInitialAnswers({
-      services,
-      initialProgress,
-    }),
+    Record<
+      string,
+      ServiceAnswer
+    >
+  >(
+    () =>
+      createInitialAnswers({
+        services,
+        initialProgress,
+      }),
   );
 
   const [
     validatedServiceIds,
     setValidatedServiceIds,
-  ] = useState<string[]>(() =>
-    createInitialValidatedServiceIds({
-      services,
-      initialProgress,
-    }),
+  ] = useState<
+    string[]
+  >(
+    () =>
+      createInitialValidatedServiceIds({
+        services,
+        initialProgress,
+      }),
   );
 
   const [
     selectedServiceId,
     setSelectedServiceId,
-  ] = useState<string>(() => {
-    const initialValidatedIds =
-      createInitialValidatedServiceIds(
-        {
+  ] = useState<string>(
+    () => {
+      const initialValidatedIds =
+        createInitialValidatedServiceIds({
           services,
           initialProgress,
-        },
-      );
+        });
 
-    return getInitialSelectedServiceId(
-      {
+      return getInitialSelectedServiceId({
         services,
 
         validatedServiceIds:
           initialValidatedIds,
 
         initialProgress,
-      },
-    );
-  });
-
-  /*
-   * This remains true when a completed
-   * assessment is reopened without changing
-   * any answers.
-   *
-   * It becomes false as soon as an answer
-   * changes, because the previous result is
-   * no longer guaranteed to be valid.
-   */
-  const [
-    isSavedAsCompleted,
-    setIsSavedAsCompleted,
-  ] = useState(
-    () =>
-      initialProgress
-        ?.completed === true,
+      });
+    },
   );
 
   const [
     errorsByField,
     setErrorsByField,
   ] = useState<
-    Record<string, string>
+    Record<
+      string,
+      string
+    >
   >({});
+
+  const [
+    actionError,
+    setActionError,
+  ] = useState<
+    string | null
+  >(null);
+
+  // ---------------------------------------------------------------------------
+  // Backend mutation queue
+  // ---------------------------------------------------------------------------
+
+  /*
+   * Assessment mutations are serialized so
+   * an older answer/navigation request cannot
+   * finish after a newer operation.
+   */
+  const mutationQueueRef =
+    useRef<
+      Promise<void>
+    >(
+      Promise.resolve(),
+    );
+
+  const enqueueMutation =
+    <T,>(
+      operation:
+        () => Promise<T>,
+    ): Promise<T> => {
+      const result =
+        mutationQueueRef
+          .current
+          .then(
+            operation,
+          );
+
+      mutationQueueRef.current =
+        result.then(
+          () =>
+            undefined,
+
+          () =>
+            undefined,
+        );
+
+      return result;
+    };
+
+  const reportActionError =
+    (
+      error:
+        unknown,
+    ) => {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Could not save the Assessment progress.",
+      );
+    };
+
+  const persistActiveService =
+    (
+      serviceId:
+        string,
+    ) => {
+      setActionError(
+        null,
+      );
+
+      void enqueueMutation(
+        () =>
+          caseStudyApi
+            .setActiveAssessmentService(
+              serviceId,
+            ),
+      ).catch(
+        reportActionError,
+      );
+    };
+
+  // ---------------------------------------------------------------------------
+  // Current selection
+  // ---------------------------------------------------------------------------
 
   const selectedService =
     services.find(
@@ -328,7 +469,9 @@ export const useCaseStudyAssessment = ({
   const selectedDomain:
     | TechnicalDomainName
     | "" =
-    selectedService?.domain ?? "";
+    selectedService
+      ?.domain ??
+    "";
 
   const selectedDomainServices =
     selectedDomain
@@ -337,79 +480,46 @@ export const useCaseStudyAssessment = ({
         ]
       : [];
 
-  const scenarioByServiceId =
-    useMemo(() => {
-      return caseStudy
-        .selectedServices
-        .reduce<
-          Record<
-            string,
-            ServiceScenarioViewModel
-          >
-        >(
-          (
-            accumulator,
-            selectedServiceDefinition,
-          ) => {
-            accumulator[
-              selectedServiceDefinition
-                .serviceId
-            ] = {
-              evidence:
-                selectedServiceDefinition
-                  .scenarioEvidence,
-            };
+  // ---------------------------------------------------------------------------
+  // Answer helpers
+  // ---------------------------------------------------------------------------
 
-            return accumulator;
-          },
-          {},
+  const getAnswer =
+    (
+      serviceId:
+        string,
+    ): ServiceAnswer => {
+      return (
+        answers[
+          serviceId
+        ] ??
+        createDefaultServiceAnswer(
+          serviceId,
+        )
+      );
+    };
+
+  const isServiceValidated =
+    (
+      serviceId:
+        string,
+    ): boolean => {
+      return validatedServiceIds
+        .includes(
+          serviceId,
         );
-    }, [
-      caseStudy.selectedServices,
-    ]);
+    };
 
-  const getAnswer = (
-    serviceId: string,
-  ): ServiceAnswer => {
-    return (
-      answers[serviceId] ??
-      createDefaultServiceAnswer(
-        serviceId,
-      )
-    );
-  };
-
-  const getServiceErrors = (
-    serviceId: string,
-  ): Record<string, string> => {
-    return validateAssessmentServiceAnswer(
-      getAnswer(serviceId),
-      caseStudy.selectedServices,
-    );
-  };
-
-  const isServiceCorrect = (
-    serviceId: string,
-  ): boolean => {
-    return isAssessmentServiceAnswerCorrect(
-      getAnswer(serviceId),
-      caseStudy.selectedServices,
-    );
-  };
-
-  const isServiceValidated = (
-    serviceId: string,
-  ): boolean => {
-    return validatedServiceIds.includes(
-      serviceId,
-    );
-  };
+  // ---------------------------------------------------------------------------
+  // Progress presentation
+  // ---------------------------------------------------------------------------
 
   const completedServices =
-    services.filter((service) =>
-      isServiceValidated(
-        service.id,
-      ),
+    services.filter(
+      (service) =>
+        isServiceValidated(
+          service.id,
+        ),
     );
 
   const incompleteServices =
@@ -422,14 +532,20 @@ export const useCaseStudyAssessment = ({
 
   const completedByDomain =
     domainsWithServices.reduce(
-      (accumulator, domain) => {
-        accumulator[domain] =
+      (
+        accumulator,
+        domain,
+      ) => {
+        accumulator[
+          domain
+        ] =
           servicesByDomain[
             domain
-          ].filter((service) =>
-            isServiceValidated(
-              service.id,
-            ),
+          ].filter(
+            (service) =>
+              isServiceValidated(
+                service.id,
+              ),
           ).length;
 
         return accumulator;
@@ -442,8 +558,13 @@ export const useCaseStudyAssessment = ({
 
   const totalByDomain =
     domainsWithServices.reduce(
-      (accumulator, domain) => {
-        accumulator[domain] =
+      (
+        accumulator,
+        domain,
+      ) => {
+        accumulator[
+          domain
+        ] =
           servicesByDomain[
             domain
           ].length;
@@ -457,94 +578,188 @@ export const useCaseStudyAssessment = ({
     );
 
   const progress =
-    services.length > 0
+    services.length >
+    0
       ? Math.round(
           (
-            completedServices.length /
+            completedServices
+              .length /
             services.length
-          ) * 100,
+          ) *
+            100,
         )
       : 0;
 
   const isAssessmentCompleted =
-    services.length > 0 &&
-    completedServices.length ===
+    services.length >
+      0 &&
+    completedServices
+      .length ===
       services.length;
 
   const isFinalRemainingService =
     isAssessmentCompleted ||
     (
-      selectedService !== null &&
-      incompleteServices.length ===
+      selectedService !==
+        null &&
+      incompleteServices
+        .length ===
         1 &&
-      incompleteServices[0]?.id ===
+      incompleteServices[0]
+        ?.id ===
         selectedService.id
     );
 
-  const onChangeAnswer = (
-    answer: ServiceAnswer,
-  ) => {
-    setAnswers((current) => ({
-      ...current,
+  // ---------------------------------------------------------------------------
+  // Local state actions
+  // ---------------------------------------------------------------------------
 
-      [answer.serviceId]:
-        answer,
-    }));
-
-    setValidatedServiceIds(
-      (current) =>
-        current.filter(
-          (serviceId) =>
-            serviceId !==
-            answer.serviceId,
-        ),
-    );
-
-    /*
-     * Any changed answer invalidates the
-     * previously submitted result.
-     */
-    setIsSavedAsCompleted(
-      false,
-    );
-
-    setErrorsByField(
-      (current) => {
-        const nextErrors = {
-          ...current,
-        };
-
-        delete nextErrors[
-          `${answer.serviceId}.selectedLevelId`
-        ];
-
-        delete nextErrors[
-          `${answer.serviceId}.share`
-        ];
-
-        delete nextErrors[
-          `${answer.serviceId}.additionalLevelId`
-        ];
-
-        return nextErrors;
-      },
-    );
-  };
-
-  const validateCurrentService =
-    (): boolean => {
-      if (!selectedService) {
-        return false;
-      }
-
-      const errors =
-        getServiceErrors(
-          selectedService.id,
+  const onChangeAnswer =
+    (
+      answer:
+        ServiceAnswer,
+    ) => {
+      const previousAnswer =
+        getAnswer(
+          answer.serviceId,
         );
+
+      const selectedLevelChanged =
+        previousAnswer
+          .selectedLevelId !==
+        answer.selectedLevelId;
+
+      const shareChanged =
+        previousAnswer.share !==
+        answer.share;
+
+      const additionalLevelChanged =
+        previousAnswer
+          .additionalLevelId !==
+        answer.additionalLevelId;
+
+      setAnswers(
+        (current) => ({
+          ...current,
+
+          [answer.serviceId]:
+            answer,
+        }),
+      );
+
+      /*
+      * A changed answer must no longer
+      * appear locally as validated.
+      *
+      * The backend performs the same
+      * canonical invalidation.
+      */
+      setValidatedServiceIds(
+        (current) =>
+          current.filter(
+            (serviceId) =>
+              serviceId !==
+              answer.serviceId,
+          ),
+      );
+
+      /*
+      * Clear only validation feedback
+      * that belongs to a field whose
+      * value actually changed.
+      *
+      * This does not validate the new
+      * value. The backend remains the
+      * canonical validation authority.
+      */
+      setErrorsByField(
+        (current) => {
+          const nextErrors = {
+            ...current,
+          };
+
+          let changed = false;
+
+          if (
+            selectedLevelChanged
+          ) {
+            const key =
+              `${answer.serviceId}.selectedLevelId`;
+
+            if (key in nextErrors) {
+              delete nextErrors[
+                key
+              ];
+
+              changed = true;
+            }
+          }
+
+          if (shareChanged) {
+            const key =
+              `${answer.serviceId}.share`;
+
+            if (key in nextErrors) {
+              delete nextErrors[
+                key
+              ];
+
+              changed = true;
+            }
+          }
+
+          if (
+            additionalLevelChanged
+          ) {
+            const key =
+              `${answer.serviceId}.additionalLevelId`;
+
+            if (key in nextErrors) {
+              delete nextErrors[
+                key
+              ];
+
+              changed = true;
+            }
+          }
+
+          return changed
+            ? nextErrors
+            : current;
+        },
+      );
+    };
+
+  const applyServerValidation =
+    ({
+      serviceId,
+      errors,
+      nextValidatedServiceIds,
+      nextServiceId,
+    }: {
+      serviceId:
+        string;
+
+      errors:
+        Record<
+          string,
+          string
+        >;
+
+      nextValidatedServiceIds:
+        string[];
+
+      nextServiceId:
+        | string
+        | null;
+    }) => {
+      setValidatedServiceIds(
+        nextValidatedServiceIds,
+      );
 
       const prefixedErrors =
         prefixValidationErrors(
-          selectedService.id,
+          serviceId,
           errors,
         );
 
@@ -552,185 +767,25 @@ export const useCaseStudyAssessment = ({
         prefixedErrors,
       );
 
-      return (
+      if (
         Object.keys(
           errors,
-        ).length === 0
-      );
-    };
-
-  const findNextIncompleteService = (
-    nextValidatedServiceIds =
-      validatedServiceIds,
-  ): SriService | null => {
-    if (
-      !selectedService ||
-      !selectedDomain
-    ) {
-      return null;
-    }
-
-    const isValidated = (
-      serviceId: string,
-    ) =>
-      nextValidatedServiceIds.includes(
-        serviceId,
-      );
-
-    const currentDomainIndex =
-      domainsWithServices.findIndex(
-        (domain) =>
-          domain === selectedDomain,
-      );
-
-    if (
-      currentDomainIndex === -1
-    ) {
-      return null;
-    }
-
-    const currentDomainServices =
-      servicesByDomain[
-        selectedDomain
-      ];
-
-    const currentServiceIndex =
-      currentDomainServices.findIndex(
-        (service) =>
-          service.id ===
-          selectedService.id,
-      );
-
-    if (
-      currentServiceIndex === -1
-    ) {
-      return null;
-    }
-
-    /*
-    * 1. Complete the current domain first.
-    *
-    * Search from the service immediately
-    * to the right of the current one.
-    *
-    * If no incomplete service is found,
-    * continue from the beginning of the
-    * same domain up to the current service.
-    */
-    const servicesToSearchInCurrentDomain = [
-      ...currentDomainServices.slice(
-        currentServiceIndex + 1,
-      ),
-
-      ...currentDomainServices.slice(
-        0,
-        currentServiceIndex,
-      ),
-    ];
-
-    const nextServiceInCurrentDomain =
-      servicesToSearchInCurrentDomain.find(
-        (service) =>
-          !isValidated(
-            service.id,
-          ),
-      );
-
-    if (
-      nextServiceInCurrentDomain
-    ) {
-      return nextServiceInCurrentDomain;
-    }
-
-    /*
-    * 2. The current domain is complete.
-    *
-    * Continue through the domains below
-    * the current one. If necessary, wrap
-    * to the beginning of the domain list.
-    */
-    const domainsToSearch = [
-      ...domainsWithServices.slice(
-        currentDomainIndex + 1,
-      ),
-
-      ...domainsWithServices.slice(
-        0,
-        currentDomainIndex,
-      ),
-    ];
-
-    for (
-      const domain of
-      domainsToSearch
-    ) {
-      const firstIncompleteService =
-        servicesByDomain[
-          domain
-        ].find(
-          (service) =>
-            !isValidated(
-              service.id,
-            ),
-        );
-
-      if (
-        firstIncompleteService
+        ).length ===
+          0 &&
+        nextServiceId
       ) {
-        return firstIncompleteService;
-      }
-    }
-
-    return null;
-  };
-
-  const saveAndNext =
-    (): boolean => {
-      if (!selectedService) {
-        return false;
-      }
-
-      const isValid =
-        validateCurrentService();
-
-      if (!isValid) {
-        return false;
-      }
-
-      const nextValidatedServiceIds =
-        validatedServiceIds.includes(
-          selectedService.id,
-        )
-          ? validatedServiceIds
-          : [
-              ...validatedServiceIds,
-              selectedService.id,
-            ];
-
-      setValidatedServiceIds(
-        nextValidatedServiceIds,
-      );
-
-      const nextService =
-        findNextIncompleteService(
-          nextValidatedServiceIds,
-        );
-
-      setErrorsByField({});
-
-      if (nextService) {
         setSelectedServiceId(
-          nextService.id,
+          nextServiceId,
         );
       }
-
-      return true;
     };
 
   const goToPreviousService =
-    () => {
-      if (!selectedService) {
-        return;
+    (): string | null => {
+      if (
+        !selectedService
+      ) {
+        return null;
       }
 
       const currentIndex =
@@ -740,83 +795,369 @@ export const useCaseStudyAssessment = ({
             selectedService.id,
         );
 
-      if (currentIndex > 0) {
+      if (
+        currentIndex <=
+        0
+      ) {
+        return null;
+      }
+
+      const previousServiceId =
+        services[
+          currentIndex - 1
+        ]?.id ??
+        null;
+
+      if (
+        previousServiceId
+      ) {
+        setErrorsByField(
+          {},
+        );
+
         setSelectedServiceId(
-          services[
-            currentIndex - 1
-          ]?.id ?? "",
+          previousServiceId,
         );
       }
+
+      return previousServiceId;
     };
 
-  const canSelectService = (
-    _serviceId: string,
-  ): boolean => {
-    return true;
-  };
+  const canSelectService =
+    (
+      _serviceId:
+        string,
+    ): boolean => {
+      return true;
+    };
 
-  const onSelectService = (
-    serviceId: string,
-  ) => {
-    if (
-      !canSelectService(
+  const onSelectService =
+    (
+      serviceId:
+        string,
+    ): string | null => {
+      if (
+        !canSelectService(
+          serviceId,
+        )
+      ) {
+        return null;
+      }
+
+      const serviceExists =
+        services.some(
+          (service) =>
+            service.id ===
+            serviceId,
+        );
+
+      if (
+        !serviceExists
+      ) {
+        return null;
+      }
+
+      setErrorsByField(
+        {},
+      );
+
+      setSelectedServiceId(
         serviceId,
-      )
-    ) {
-      return;
-    }
+      );
 
-    setErrorsByField({});
+      return serviceId;
+    };
 
-    setSelectedServiceId(
-      serviceId,
-    );
-  };
+  const canSelectDomain =
+    (
+      domain:
+        TechnicalDomainName,
+    ): boolean => {
+      return (
+        servicesByDomain[
+          domain
+        ].length >
+        0
+      );
+    };
 
-  const canSelectDomain = (
-    domain:
-      TechnicalDomainName,
-  ): boolean => {
-    return (
-      servicesByDomain[
-        domain
-      ].length > 0
-    );
-  };
+  const onSelectDomain =
+    (
+      domain:
+        TechnicalDomainName,
+    ): string | null => {
+      if (
+        !canSelectDomain(
+          domain,
+        )
+      ) {
+        return null;
+      }
 
-  const onSelectDomain = (
-    domain:
-      TechnicalDomainName,
-  ) => {
-    if (
-      !canSelectDomain(
-        domain,
-      )
-    ) {
-      return;
-    }
+      const firstService =
+        servicesByDomain[
+          domain
+        ].find(
+          (service) =>
+            !isServiceValidated(
+              service.id,
+            ),
+        ) ??
+        servicesByDomain[
+          domain
+        ][0];
 
-    const firstService =
-      servicesByDomain[
-        domain
-      ].find(
-        (service) =>
-          !isServiceValidated(
-            service.id,
-          ),
-      ) ??
-      servicesByDomain[
-        domain
-      ][0];
+      if (
+        !firstService
+      ) {
+        return null;
+      }
 
-    if (firstService) {
-      setErrorsByField({});
+      setErrorsByField(
+        {},
+      );
 
       setSelectedServiceId(
         firstService.id,
       );
-    }
-  };
+
+      return firstService.id;
+    };
+
+  // ---------------------------------------------------------------------------
+  // Backend-backed user actions
+  // ---------------------------------------------------------------------------
+
+  const handleChangeAnswer =
+    (
+      answer:
+        ServiceAnswer,
+    ) => {
+      onChangeAnswer(
+        answer,
+      );
+
+      setActionError(
+        null,
+      );
+
+      void enqueueMutation(
+        () =>
+          caseStudyApi
+            .saveAssessmentAnswer(
+              answer,
+            ),
+      ).catch(
+        reportActionError,
+      );
+    };
+
+  const handlePreviousService =
+    (): string | null => {
+      const previousServiceId =
+        goToPreviousService();
+
+      if (
+        previousServiceId
+      ) {
+        persistActiveService(
+          previousServiceId,
+        );
+      }
+
+      return previousServiceId;
+    };
+
+  const handleSelectService =
+    (
+      serviceId:
+        string,
+    ): string | null => {
+      const nextServiceId =
+        onSelectService(
+          serviceId,
+        );
+
+      if (
+        nextServiceId
+      ) {
+        persistActiveService(
+          nextServiceId,
+        );
+      }
+
+      return nextServiceId;
+    };
+
+  const handleSelectDomain =
+    (
+      domain:
+        TechnicalDomainName,
+    ): string | null => {
+      const nextServiceId =
+        onSelectDomain(
+          domain,
+        );
+
+      if (
+        nextServiceId
+      ) {
+        persistActiveService(
+          nextServiceId,
+        );
+      }
+
+      return nextServiceId;
+    };
+
+  const saveAndNext =
+    async (): Promise<
+      boolean
+    > => {
+      if (
+        !selectedService
+      ) {
+        return false;
+      }
+
+      setActionError(
+        null,
+      );
+
+      try {
+        const response =
+          await enqueueMutation(
+            () =>
+              caseStudyApi
+                .validateAssessmentAnswer(
+                  getAnswer(
+                    selectedService
+                      .id,
+                  ),
+                ),
+          );
+
+        applyServerValidation({
+          serviceId:
+            selectedService
+              .id,
+
+          errors:
+            response
+              .validation
+              .errors,
+
+          nextValidatedServiceIds:
+            response
+              .validatedServiceIds,
+
+          nextServiceId:
+            response
+              .nextServiceId,
+        });
+
+        return response
+          .validation
+          .isValid;
+      } catch (error) {
+        reportActionError(
+          error,
+        );
+
+        return false;
+      }
+    };
+
+  const submit =
+    async (): Promise<
+      AssessmentSubmitSuccess | null
+    > => {
+      if (
+        !selectedService
+      ) {
+        return null;
+      }
+
+      setActionError(
+        null,
+      );
+
+      try {
+        /*
+         * Validate the currently selected
+         * service before submitting.
+         */
+        const validationResponse =
+          await enqueueMutation(
+            () =>
+              caseStudyApi
+                .validateAssessmentAnswer(
+                  getAnswer(
+                    selectedService
+                      .id,
+                  ),
+                ),
+          );
+
+        applyServerValidation({
+          serviceId:
+            selectedService
+              .id,
+
+          errors:
+            validationResponse
+              .validation
+              .errors,
+
+          nextValidatedServiceIds:
+            validationResponse
+              .validatedServiceIds,
+
+          nextServiceId:
+            validationResponse
+              .nextServiceId,
+        });
+
+        if (
+          !validationResponse
+            .validation
+            .isValid ||
+          !validationResponse
+            .allServicesValidated
+        ) {
+          return null;
+        }
+
+        /*
+         * Canonical SRI calculation and
+         * baseline persistence are backend-owned.
+         */
+        const result =
+          await enqueueMutation(
+            () =>
+              caseStudyApi
+                .submitAssessment(),
+          );
+
+        return {
+          result,
+
+          validatedServiceIds:
+            validationResponse
+              .validatedServiceIds,
+
+          selectedServiceId:
+            selectedService
+              .id,
+        };
+      } catch (error) {
+        reportActionError(
+          error,
+        );
+
+        return null;
+      }
+    };
 
   return {
     services,
@@ -834,17 +1175,23 @@ export const useCaseStudyAssessment = ({
 
     answers,
     validatedServiceIds,
-    isSavedAsCompleted,
 
-    onChangeAnswer,
+    getAnswer,
+
+    onChangeAnswer:
+      handleChangeAnswer,
 
     errorsByField,
-    validateCurrentService,
+    actionError,
+
+    saveAndNext,
+    submit,
 
     scenarioByServiceId,
 
     completedServicesCount:
-      completedServices.length,
+      completedServices
+        .length,
 
     totalServicesCount:
       services.length,
@@ -856,8 +1203,8 @@ export const useCaseStudyAssessment = ({
     isAssessmentCompleted,
     isFinalRemainingService,
 
-    saveAndNext,
-    goToPreviousService,
+    goToPreviousService:
+      handlePreviousService,
 
     canGoPrevious:
       selectedService !==
@@ -865,16 +1212,21 @@ export const useCaseStudyAssessment = ({
       services.findIndex(
         (service) =>
           service.id ===
-          selectedService.id,
-      ) > 0,
+          selectedService
+            .id,
+      ) >
+        0,
 
-    onSelectService,
+    onSelectService:
+      handleSelectService,
+
     canSelectService,
 
-    onSelectDomain,
+    onSelectDomain:
+      handleSelectDomain,
+
     canSelectDomain,
 
-    isServiceCorrect,
     isServiceValidated,
   };
 };

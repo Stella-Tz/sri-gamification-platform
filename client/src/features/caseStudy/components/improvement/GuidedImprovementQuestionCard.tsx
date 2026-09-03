@@ -11,15 +11,15 @@ import PrimaryButton from "../../../../components/ui/PrimaryButton";
 import keyFunctionalitiesImpactCriteriaImage from "../../../../assets/caseStudy/key_functionalities_and_impact_criteria.png";
 
 import type {
-  BuildingType,
-  ClimateZone,
-  GuidedImprovementQuestion,
   ImpactCriterionName,
-  OfficialAssessmentMethod,
-  ResultsServiceEntry,
-  SriService,
   TechnicalDomainName,
 } from "../../types/caseStudy.types";
+
+import type {
+  GuidedImprovementDomainWeightingTable,
+  GuidedImprovementPublicQuestion,
+  GuidedImprovementServiceMaximumImpactScoresTable,
+} from "../../improvement/guidedImprovement.types";
 
 import DomainWeightingTable from "./DomainWeightingTable";
 import GuidedImprovementQuestionStepper from "./GuidedImprovementQuestionStepper";
@@ -33,35 +33,36 @@ type FeedbackState =
 
 type GuidedImprovementQuestionCardProps = {
   questions:
-    readonly GuidedImprovementQuestion[];
+    readonly GuidedImprovementPublicQuestion[];
 
   currentIndex: number;
 
   currentQuestion:
-    GuidedImprovementQuestion;
+    GuidedImprovementPublicQuestion;
 
   selectedOptionValue: string;
   feedback: FeedbackState;
 
-  assessmentMethod:
-    OfficialAssessmentMethod;
+    resolvedImpactCriterion:
+      | ImpactCriterionName
+      | null;
+
+    resolvedTechnicalDomain:
+      | TechnicalDomainName
+      | null;
+
+    isChecking: boolean;
+    isAdvancing: boolean;
 
   hasSimulationScenario: boolean;
 
-  buildingType: BuildingType;
-  climateZone: ClimateZone;
+  domainWeightingTable:
+    | GuidedImprovementDomainWeightingTable
+    | null;
 
-  /**
-   * Fully resolved Catalogue A or Catalogue B.
-   */
-  services: readonly SriService[];
-
-  servicesByDomain: Readonly<
-    Record<
-      TechnicalDomainName,
-      readonly ResultsServiceEntry[]
-    >
-  >;
+  serviceMaximumImpactScoresTable:
+    | GuidedImprovementServiceMaximumImpactScoresTable
+    | null;
 
   onSelectOption: (
     value: string,
@@ -76,16 +77,6 @@ type GuidedImprovementQuestionCardProps = {
   isLastQuestion: boolean;
 };
 
-const getQuestionById = (
-  questions:
-    readonly GuidedImprovementQuestion[],
-  id: string,
-) => {
-  return questions.find(
-    (question) =>
-      question.id === id,
-  );
-};
 
 const GuidedImprovementQuestionCard = ({
   questions,
@@ -93,12 +84,13 @@ const GuidedImprovementQuestionCard = ({
   currentQuestion,
   selectedOptionValue,
   feedback,
-  assessmentMethod,
+  resolvedImpactCriterion,
+  resolvedTechnicalDomain,
+  isChecking,
+  isAdvancing,
   hasSimulationScenario,
-  buildingType,
-  climateZone,
-  services,
-  servicesByDomain,
+  domainWeightingTable,
+  serviceMaximumImpactScoresTable,
   onSelectOption,
   onCheckAnswer,
   onNextQuestion,
@@ -106,25 +98,25 @@ const GuidedImprovementQuestionCard = ({
   isLastQuestion,
 }: GuidedImprovementQuestionCardProps) => {
   const selectedImpactCriterion =
-    getQuestionById(
-      questions,
-      "highest-impact-criterion",
-    )?.correctOptionValue as
-      | ImpactCriterionName
-      | undefined;
+    resolvedImpactCriterion ??
+    undefined;
 
   const selectedDomain =
-    getQuestionById(
-      questions,
-      "highest-weight-domain",
-    )?.correctOptionValue as
-      | TechnicalDomainName
-      | undefined;
+    resolvedTechnicalDomain ??
+    undefined;
+
+  const isBusy =
+    isChecking ||
+    isAdvancing;
 
   const shouldShowHintVisuals =
     feedback === "wrong";
 
   const handleCorrectAction = () => {
+    if (isBusy) {
+      return;
+    }
+
     if (isLastQuestion) {
       onContinueToSimulation();
       return;
@@ -188,16 +180,11 @@ const GuidedImprovementQuestionCard = ({
 
         {currentQuestion.id ===
           "highest-weight-domain" &&
-        selectedImpactCriterion ? (
+        selectedImpactCriterion &&
+        domainWeightingTable ? (
           <DomainWeightingTable
-            assessmentMethod={
-              assessmentMethod
-            }
-            buildingType={
-              buildingType
-            }
-            climateZone={
-              climateZone
+            table={
+              domainWeightingTable
             }
             focusImpactCriterion={
               selectedImpactCriterion
@@ -211,19 +198,14 @@ const GuidedImprovementQuestionCard = ({
         {currentQuestion.id ===
           "highest-impact-service" &&
         selectedImpactCriterion &&
-        selectedDomain ? (
+        selectedDomain &&
+        serviceMaximumImpactScoresTable ? (
           <ServiceMaximumImpactScoresTable
-            domain={
-              selectedDomain
+            table={
+              serviceMaximumImpactScoresTable
             }
             impactCriterion={
               selectedImpactCriterion
-            }
-            services={
-              services
-            }
-            servicesByDomain={
-              servicesByDomain
             }
             showHighlight={
               shouldShowHintVisuals
@@ -235,7 +217,14 @@ const GuidedImprovementQuestionCard = ({
           Select one option:
         </p>
 
-        <fieldset className="mt-3 grid gap-3 md:grid-cols-2">
+        <fieldset
+          aria-disabled={isBusy}
+          className={`mt-3 grid gap-3 md:grid-cols-2 ${
+            isBusy
+              ? "pointer-events-none select-none"
+              : ""
+          }`}
+        >
           <legend className="sr-only">
             {currentQuestion.title}
           </legend>
@@ -249,10 +238,16 @@ const GuidedImprovementQuestionCard = ({
               return (
                 <label
                   key={option.value}
-                  className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-colors duration-200 ${
+                  className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-colors duration-200 ${
+                    isBusy
+                      ? "cursor-default"
+                      : "cursor-pointer"
+                  } ${
                     isSelected
                       ? "border-blue-300 ring-4 ring-blue-100"
-                      : "border-slate-200 hover:border-blue-200"
+                      : isBusy
+                        ? "border-slate-200"
+                        : "border-slate-200 hover:border-blue-200"
                   }`}
                 >
                   <input
@@ -266,11 +261,17 @@ const GuidedImprovementQuestionCard = ({
                     checked={
                       isSelected
                     }
-                    onChange={() =>
+                    aria-disabled={isBusy}
+                    tabIndex={isBusy ? -1 : 0}
+                    onChange={() => {
+                      if (isBusy) {
+                        return;
+                      }
+
                       onSelectOption(
                         option.value,
-                      )
-                    }
+                      );
+                    }}
                     className="h-4 w-4 shrink-0 accent-blue-600"
                   />
 
@@ -318,7 +319,15 @@ const GuidedImprovementQuestionCard = ({
               onClick={
                 handleCorrectAction
               }
-              className="group w-full px-7 sm:w-auto"
+              className="
+                group
+                w-full
+                px-7
+                sm:w-auto
+                disabled:!bg-blue-600
+                disabled:!opacity-100
+              "
+              disabled={isAdvancing}
             >
               <span className="inline-flex items-center gap-2">
                 {isLastQuestion
@@ -335,7 +344,14 @@ const GuidedImprovementQuestionCard = ({
               onClick={
                 onCheckAnswer
               }
-              className="w-full px-7 sm:w-auto"
+              className="
+                w-full
+                px-7
+                sm:w-auto
+                disabled:!bg-blue-600
+                disabled:!opacity-100
+              "
+              disabled={isChecking || isAdvancing}
             >
               Check Answer
             </PrimaryButton>

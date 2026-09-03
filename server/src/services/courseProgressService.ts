@@ -7,6 +7,16 @@ import prisma from "../prismaClient.js";
 
 const COURSE_ID = "sri-course";
 
+export type CourseStepStatusDto =
+  | "locked"
+  | "current"
+  | "completed";
+
+export type CourseSectionStatusDto =
+  | "locked"
+  | "current"
+  | "completed";
+
 export type CourseProgressDto = {
   completedLessonIds: string[];
   completedQuizIds: string[];
@@ -26,6 +36,44 @@ export type CourseProgressDto = {
     passed: boolean;
     completedAt: string;
   }[];
+
+  /*
+   * Canonical Course journey state.
+   *
+   * The frontend may use its static courseDefinition
+   * for presentation text, but it must not infer
+   * availability, current step, completion, section
+   * status or Case Study unlock state.
+   */
+  currentStepId: string | null;
+
+  steps: {
+    stepId: string;
+    sectionId: string;
+    type:
+      | "lesson"
+      | "quiz"
+      | "final-test";
+    status: CourseStepStatusDto;
+  }[];
+
+  sections: {
+    sectionId: string;
+    status: CourseSectionStatusDto;
+    completedSteps: number;
+    totalSteps: number;
+  }[];
+
+  completedSteps: number;
+  totalSteps: number;
+
+  completedSections: number;
+  totalSections: number;
+
+  progressPercentage: number;
+
+  isCourseCompleted: boolean;
+  isCaseStudyUnlocked: boolean;
 };
 
 export class CourseAccessError extends Error {
@@ -63,7 +111,25 @@ const calculateScorePercentage = (
   );
 };
 
-const getOrderedCourseSteps =
+const mapCourseStepType = (
+  type: CourseStepType,
+):
+  | "lesson"
+  | "quiz"
+  | "final-test" => {
+  switch (type) {
+    case CourseStepType.LESSON:
+      return "lesson";
+
+    case CourseStepType.QUIZ:
+      return "quiz";
+
+    case CourseStepType.FINAL_TEST:
+      return "final-test";
+  }
+};
+
+const getOrderedCourseSections =
   async () => {
     const course =
       await prisma.course.findUnique({
@@ -102,7 +168,15 @@ const getOrderedCourseSteps =
       );
     }
 
-    return course.sections.flatMap(
+    return course.sections;
+  };
+
+const getOrderedCourseSteps =
+  async () => {
+    const sections =
+      await getOrderedCourseSections();
+
+    return sections.flatMap(
       (section) =>
         section.steps.map((step) => ({
           ...step,
@@ -239,14 +313,41 @@ export const getAccessibleCourseStep =
     return targetStep;
   };
 
+export const isCourseCompleted =
+  async (
+    userId: string,
+  ): Promise<boolean> => {
+    const steps =
+      await getOrderedCourseSteps();
+
+    if (steps.length === 0) {
+      return false;
+    }
+
+    const completedStepIds =
+      await getCompletedStepIds(
+        userId,
+      );
+
+    return steps.every(
+      (step) =>
+        completedStepIds.has(
+          step.id,
+        ),
+    );
+  };
+
 export const getUserCourseProgress =
   async (
     userId: string,
   ): Promise<CourseProgressDto> => {
     const [
-      completedSteps,
+      courseSections,
+      completedCourseSteps,
       finalTestAttempts,
     ] = await Promise.all([
+      getOrderedCourseSections(),
+
       prisma.userCompletedCourseStep.findMany(
         {
           where: {
@@ -311,7 +412,7 @@ export const getUserCourseProgress =
     ]);
 
     const completedLessonIds =
-      completedSteps
+      completedCourseSteps
         .filter(
           ({ step }) =>
             step.type ===
@@ -325,13 +426,170 @@ export const getUserCourseProgress =
         );
 
     const completedQuizIds =
-      completedSteps
+      completedCourseSteps
         .filter(
           ({ step }) =>
             step.type ===
             CourseStepType.QUIZ,
         )
-        .map(({ step }) => step.id);
+        .map(
+          ({ step }) =>
+            step.id,
+        );
+
+    const completedFinalTestIds =
+      finalTestAttempts
+        .filter(
+          (attempt) =>
+            attempt.status ===
+            FinalTestAttemptStatus.PASSED,
+        )
+        .map(
+          (attempt) =>
+            attempt.finalTestStep.id,
+        );
+
+    const completedStepIds =
+      new Set<string>([
+        ...completedCourseSteps
+          .filter(
+            ({ step }) =>
+              step.type ===
+                CourseStepType.LESSON ||
+              step.type ===
+                CourseStepType.QUIZ,
+          )
+          .map(
+            ({ step }) =>
+              step.id,
+          ),
+
+        ...completedFinalTestIds,
+      ]);
+
+    const orderedSteps =
+      courseSections.flatMap(
+        (section) =>
+          section.steps.map(
+            (step) => ({
+              ...step,
+              sectionId:
+                section.id,
+            }),
+          ),
+      );
+
+    const currentStep =
+      orderedSteps.find(
+        (step) =>
+          !completedStepIds.has(
+            step.id,
+          ),
+      ) ?? null;
+
+    const stepProgress =
+      orderedSteps.map(
+        (step) => ({
+          stepId: step.id,
+
+          sectionId:
+            step.sectionId,
+
+          type:
+            mapCourseStepType(
+              step.type,
+            ),
+
+          status:
+            completedStepIds.has(
+              step.id,
+            )
+              ? "completed" as const
+              : currentStep?.id ===
+                  step.id
+                ? "current" as const
+                : "locked" as const,
+        }),
+      );
+
+    const sectionProgress =
+      courseSections.map(
+        (section) => {
+          const sectionSteps =
+            stepProgress.filter(
+              (step) =>
+                step.sectionId ===
+                section.id,
+            );
+
+          const completedSteps =
+            sectionSteps.filter(
+              (step) =>
+                step.status ===
+                "completed",
+            ).length;
+
+          const totalSteps =
+            sectionSteps.length;
+
+          const status:
+            CourseSectionStatusDto =
+              totalSteps > 0 &&
+              completedSteps ===
+                totalSteps
+                ? "completed"
+                : sectionSteps.some(
+                      (step) =>
+                        step.status ===
+                        "current",
+                    )
+                  ? "current"
+                  : "locked";
+
+          return {
+            sectionId:
+              section.id,
+            status,
+            completedSteps,
+            totalSteps,
+          };
+        },
+      );
+
+    const completedSteps =
+      stepProgress.filter(
+        (step) =>
+          step.status ===
+          "completed",
+      ).length;
+
+    const totalSteps =
+      stepProgress.length;
+
+    const completedSections =
+      sectionProgress.filter(
+        (section) =>
+          section.status ===
+          "completed",
+      ).length;
+
+    const totalSections =
+      sectionProgress.length;
+
+    const progressPercentage =
+      totalSteps === 0
+        ? 0
+        : Math.round(
+            (
+              completedSteps /
+              totalSteps
+            ) * 100,
+          );
+
+    const courseCompleted =
+      totalSteps > 0 &&
+      completedSteps ===
+        totalSteps;
 
     return {
       completedLessonIds,
@@ -353,9 +611,10 @@ export const getUserCourseProgress =
                   question.isCorrect ===
                   false,
               ).length;
-            
+
             const answeredCount =
-              correctCount + wrongCount;
+              correctCount +
+              wrongCount;
 
             const totalQuestions =
               attempt.questions.length;
@@ -376,14 +635,14 @@ export const getUserCourseProgress =
 
               accuracyPercentage:
                 calculateAccuracyPercentage(
-                    correctCount,
-                    answeredCount,
+                  correctCount,
+                  answeredCount,
                 ),
 
-                scorePercentage:
+              scorePercentage:
                 calculateScorePercentage(
-                    correctCount,
-                    totalQuestions,
+                  correctCount,
+                  totalQuestions,
                 ),
 
               passed:
@@ -396,6 +655,35 @@ export const getUserCourseProgress =
             };
           },
         ),
+
+      currentStepId:
+        currentStep?.id ??
+        null,
+
+      steps:
+        stepProgress,
+
+      sections:
+        sectionProgress,
+
+      completedSteps,
+      totalSteps,
+
+      completedSections,
+      totalSections,
+
+      progressPercentage,
+
+      isCourseCompleted:
+        courseCompleted,
+
+      /*
+       * The practical Case Study unlock rule
+       * is a Course journey rule and therefore
+       * belongs to the backend.
+       */
+      isCaseStudyUnlocked:
+        courseCompleted,
     };
   };
 
@@ -420,21 +708,21 @@ export const completeLesson =
     }
 
     /*
-    * Only lesson steps are completed
-    * directly through this function.
-    *
-    * Quizzes use their own completion flow,
-    * while final tests are completed only
-    * by passing a FinalTestAttempt.
-    */
+     * Only lesson steps are completed
+     * directly through this function.
+     *
+     * Quizzes use their own completion flow,
+     * while final tests are completed only
+     * by passing a FinalTestAttempt.
+     */
     if (
-        targetStep.type !==
-        CourseStepType.LESSON
-        ) {
-        throw new CourseAccessError(
-            "Only lesson steps can be completed directly.",
-        );
-     }
+      targetStep.type !==
+      CourseStepType.LESSON
+    ) {
+      throw new CourseAccessError(
+        "Only lesson steps can be completed directly.",
+      );
+    }
 
     const completedStepIds =
       await getCompletedStepIds(

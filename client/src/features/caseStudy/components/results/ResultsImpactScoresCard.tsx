@@ -7,12 +7,15 @@ import ImpactCriterionIcon from "../../../../components/ui/impact-criteria/Impac
 import { sriImpactCriterionNames } from "../../data/sriOfficialConstants";
 
 import type {
-  CaseStudySubmitResult,
   ImpactCriterionName,
 } from "../../types/caseStudy.types";
 
+import type {
+  CaseStudyResultsPublicResult,
+} from "../../results/caseStudyResults.types";
+
 type ResultsImpactScoresCardProps = {
-  result: CaseStudySubmitResult;
+  result: CaseStudyResultsPublicResult;
 };
 
 type ResolvedImpactScore = {
@@ -76,7 +79,7 @@ const ResultsImpactScoresCard = ({
 };
 
 const resolveImpactScores = (
-  result: CaseStudySubmitResult,
+  result: CaseStudyResultsPublicResult,
 ): ResolvedImpactScore[] | null => {
   const resolvedScores: ResolvedImpactScore[] = [];
 

@@ -8,17 +8,15 @@ import {
 import {
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 
 import {
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 
+import PageState from "../components/ui/PageState";
 import PrimaryButton from "../components/ui/PrimaryButton";
 
 import {
@@ -33,354 +31,255 @@ import CaseStudyPageHeader from "../features/caseStudy/components/layout/CaseStu
 import RunSimulationCard from "../features/caseStudy/components/simulation/RunSimulationCard";
 import SelectedSimulationScenarioCard from "../features/caseStudy/components/simulation/SelectedSimulationScenarioCard";
 
-import { useGuidedImprovementAnalysis } from "../features/caseStudy/hooks/useGuidedImprovementAnalysis";
-import { useSimulation } from "../features/caseStudy/hooks/useSimulation";
-
-import { buildGuidedImprovementAnalysis } from "../features/caseStudy/utils/guidedImprovementAnalysis.utils";
-
-import type {
-  BuildingType,
-  CaseStudyDetails,
-  CaseStudySubmitResult,
-  ClimateZone,
-  DomainPresence,
-  OfficialAssessmentMethod,
-  ServiceAnswer,
-  SriService,
-  TechnicalDomainName,
-} from "../features/caseStudy/types/caseStudy.types";
+import {
+  useCaseStudyGuidedImprovement,
+} from "../features/caseStudy/hooks/useCaseStudyGuidedImprovement";
 
 import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
-
-import {
-  getSriServicesForAssessmentMethod,
-} from "../features/caseStudy/data/sriServiceCatalogue";
-
-import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
-
-import type {
-  CaseStudyGuidedImprovementProgress,
-} from "../features/caseStudy/progress/caseStudyProgress.types";
-
-type GuidedImprovementLocationState = {
-  result?: CaseStudySubmitResult;
-  caseStudy?: CaseStudyDetails;
-
-  answers?: Record<
-    string,
-    ServiceAnswer
-  >;
-
-  assessmentMethod?:
-    OfficialAssessmentMethod;
-
-  serviceApplicability?: Record<
-    string,
-    boolean
-  >;
-
-  domainPresence?: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  buildingType?: BuildingType;
-  climateZone?: ClimateZone;
-
-  /*
-   * Fully resolved Catalogue A or Catalogue B.
-   */
-  services?: SriService[];
-};
-
-type GuidedImprovementAnalysisData =
-  ReturnType<
-    typeof buildGuidedImprovementAnalysis
-  >;
-
-type GuidedImprovementAnalysisContentProps = {
-  caseStudy:
-    CaseStudyDetails;
-
-  baselineResult:
-    CaseStudySubmitResult;
-
-  answers: Record<
-    string,
-    ServiceAnswer
-  >;
-
-  assessmentMethod:
-    OfficialAssessmentMethod;
-
-  serviceApplicability:
-    Record<string, boolean>;
-
-  domainPresence: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  buildingType:
-    BuildingType;
-
-  climateZone:
-    ClimateZone;
-
-  services:
-    SriService[];
-
-  guidedAnalysis:
-    GuidedImprovementAnalysisData;
-
-  initialProgress:
-    | CaseStudyGuidedImprovementProgress
-    | null;
-};
-
-const createServiceApplicability = ({
-  services,
-  caseStudy,
-}: {
-  services: SriService[];
-  caseStudy: CaseStudyDetails;
-}): Record<string, boolean> => {
-  const applicableServiceIds =
-    new Set(
-      caseStudy
-        .selectedServices
-        .map(
-          (selectedService) =>
-            selectedService
-              .serviceId,
-        ),
-    );
-
-  return services.reduce<
-    Record<string, boolean>
-  >(
-    (
-      accumulator,
-      service,
-    ) => {
-      accumulator[
-        service.id
-      ] =
-        applicableServiceIds
-          .has(
-            service.id,
-          );
-
-      return accumulator;
-    },
-    {},
-  );
-};
+  useCaseStudyProgress as useSharedCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
 
 const GuidedImprovementAnalysisPage =
   () => {
-    const location =
-      useLocation();
-
     const navigate =
       useNavigate();
 
     const {
-      activeCaseStudy,
-      getProgressForCaseStudy,
-    } = useCaseStudyProgress();
+      progress:
+        sharedProgress,
 
+      refreshProgress:
+        refreshSharedCaseStudyProgress,
+    } =
+      useSharedCaseStudyProgress();
+
+    const investigationCardRef =
+      useRef<HTMLDivElement | null>(
+        null,
+      );
+
+    const simulationPreparationRef =
+      useRef<HTMLDivElement | null>(
+        null,
+      );
+
+    const {
+      data,
+
+      selectedOptionValue,
+      feedback,
+
+      isLoading,
+      isChecking,
+      isAdvancing,
+
+      loadError,
+      actionError,
+      simulationRunError,
+
+      selectOption,
+      checkAnswer,
+      advance,
+      runSimulation,
+    } =
+      useCaseStudyGuidedImprovement();
+
+    /*
+     * This page mounts when its route is opened,
+     * therefore it no longer needs location.state
+     * merely to react to a location key.
+     */
     useLayoutEffect(() => {
       window.scrollTo({
         top: 0,
         left: 0,
         behavior: "auto",
       });
-    }, [location.key]);
+    }, []);
 
-    const state =
-      location.state as
-        | GuidedImprovementLocationState
-        | null;
+    // -------------------------------------------------------------------------
+    // Guided state derived from canonical hook data
+    // -------------------------------------------------------------------------
 
-    const activeCaseStudyDefinition =
-      activeCaseStudy
-        ? caseStudyMockData.find(
-            (candidate) =>
-              candidate.id ===
-              activeCaseStudy
-                .caseStudyId,
-          ) ?? null
-        : null;
+    const questions =
+      data?.questions ??
+      [];
 
-    const caseStudy =
-      state?.caseStudy ??
-      activeCaseStudyDefinition ??
-      caseStudyMockData[0] ??
+    const progress =
+      data?.progress ??
       null;
 
-    const savedProgress =
-      caseStudy
-        ? getProgressForCaseStudy(
-            caseStudy.id,
-          )
-        : null;
+    const currentIndex =
+      progress?.currentIndex ??
+      0;
 
-    const savedSetup =
-      savedProgress
-        ?.setup ?? null;
+    const currentQuestion =
+      questions[
+        currentIndex
+      ] ?? null;
 
-    const savedSetupAnswers =
-      savedSetup?.completed ===
-      true
-        ? savedSetup.answers
-        : null;
+    const isCompleted =
+      progress?.completed ===
+      true;
 
-    const baselineResult =
-      state?.result ??
-      savedProgress
-        ?.baselineResult ??
+    const isLastQuestion =
+      currentQuestion !==
+        null &&
+      currentIndex ===
+        questions.length - 1;
+
+    const resolvedContext =
+      data?.resolvedContext ??
       null;
 
-    const answers =
-      state?.answers ??
-      savedProgress
-        ?.assessment
-        ?.answers ??
+    const hasSimulationScenario =
+      data
+        ?.hasSimulationScenario ??
+      false;
+
+    /*
+     * Findings are already returned by the
+     * dedicated Guided Improvement backend API.
+     *
+     * No frontend catalogue enrichment or
+     * presentation compatibility type is needed.
+     */
+    const findings =
+      data?.findings ??
       null;
 
-    const assessmentMethod =
-      state
-        ?.assessmentMethod ??
-      savedSetupAnswers
-        ?.methodologySelection
-        .assessmentMethod ??
-      null;
+    const shouldShowSimulationPreparation =
+      isCompleted &&
+      hasSimulationScenario &&
+      findings !==
+        null;
 
-    const domainPresence =
-      state?.domainPresence ??
-      savedSetupAnswers
-        ?.domainPresence ??
-      null;
+    const shouldShowNoCandidate =
+      isCompleted &&
+      !hasSimulationScenario;
 
-    const buildingType =
-      state?.buildingType ??
-      savedSetupAnswers
-        ?.buildingInformation
-        .buildingType ??
-      null;
+    // -------------------------------------------------------------------------
+    // Scrolling
+    // -------------------------------------------------------------------------
 
-    const climateZone =
-      state?.climateZone ??
-      savedSetupAnswers
-        ?.buildingInformation
-        .climateZone ??
-      null;
+    useEffect(() => {
+      if (
+        !shouldShowSimulationPreparation &&
+        !shouldShowNoCandidate
+      ) {
+        return;
+      }
 
-    const services =
-      useMemo<
-        SriService[] | null
-      >(
-        () => {
-          if (
-            state?.services
-          ) {
-            return [
-              ...state.services,
-            ];
-          }
-
-          if (
-            !assessmentMethod
-          ) {
-            return null;
-          }
-
-          return getSriServicesForAssessmentMethod(
-            assessmentMethod,
-          );
-        },
-        [
-          assessmentMethod,
-          state?.services,
-        ],
-      );
-
-    const serviceApplicability =
-      useMemo<
-        Record<
-          string,
-          boolean
-        > | null
-      >(
-        () => {
-          if (
-            state
-              ?.serviceApplicability
-          ) {
-            return state
-              .serviceApplicability;
-          }
-
-          if (
-            !services ||
-            !caseStudy
-          ) {
-            return null;
-          }
-
-          return createServiceApplicability(
-            {
-              services,
-              caseStudy,
+      const animationFrame =
+        window
+          .requestAnimationFrame(
+            () => {
+              simulationPreparationRef
+                .current
+                ?.scrollIntoView({
+                  block: "start",
+                  behavior: "auto",
+                });
             },
           );
-        },
-        [
-          caseStudy,
-          services,
-          state
-            ?.serviceApplicability,
-        ],
-      );
 
-    const guidedAnalysis =
-      useMemo<
-        GuidedImprovementAnalysisData | null
-      >(() => {
-        if (
-          !baselineResult ||
-          !assessmentMethod ||
-          !buildingType ||
-          !climateZone ||
-          !services
-        ) {
-          return null;
+      return () => {
+        window
+          .cancelAnimationFrame(
+            animationFrame,
+          );
+      };
+    }, [
+      shouldShowSimulationPreparation,
+      shouldShowNoCandidate,
+    ]);
+
+    const scrollToInvestigationCard =
+      () => {
+        investigationCardRef
+          .current
+          ?.scrollIntoView({
+            block: "start",
+            behavior: "auto",
+          });
+      };
+
+    // -------------------------------------------------------------------------
+    // Actions
+    // -------------------------------------------------------------------------
+
+    const handleAdvance =
+      async () => {
+        const response =
+          await advance();
+
+        if (!response) {
+          return;
         }
 
-        return buildGuidedImprovementAnalysis(
-          {
-            assessmentMethod,
-            buildingType,
-            climateZone,
-            services,
+        if (
+          !response.progress
+            .completed
+        ) {
+          scrollToInvestigationCard();
+          return;
+        }
 
-            servicesByDomain:
-              baselineResult
-                .servicesByDomain,
-          },
+        /*
+         * Guided Improvement completion changes the
+         * canonical Case Study journey to
+         * "simulation-ready".
+         *
+         * Refresh the shared provider before the user
+         * can leave this stage, so CaseStudyPage and
+         * RouteGuard do not keep the older Results-era
+         * progress snapshot.
+         *
+         * refreshProgress is a background refresh once
+         * progress has hydrated, so it does not replace
+         * this page with a global loading screen.
+         */
+        await refreshSharedCaseStudyProgress();
+      };
+
+    const handleRunSimulation =
+      async () => {
+        const success =
+          await runSimulation();
+
+        if (!success) {
+          return;
+        }
+
+        /*
+         * Running the Simulation completes the active
+         * Case Study attempt and may also establish the
+         * first permanent official attempt.
+         *
+         * Synchronize the shared backend progress before
+         * navigating. This is essential on the first-ever
+         * completion, where "simulation-results" was not
+         * previously an allowed stage.
+         */
+        const nextProgress =
+          await refreshSharedCaseStudyProgress();
+
+        if (!nextProgress) {
+          return;
+        }
+
+        /*
+         * No route state.
+         * No local mirror.
+         *
+         * SimulationPage loads the persisted result
+         * from GET /case-study/simulation.
+         */
+        navigate(
+          CASE_STUDY_ROUTES
+            .simulationResults,
         );
-      }, [
-        baselineResult,
-        assessmentMethod,
-        buildingType,
-        climateZone,
-        services,
-      ]);
+      };
 
     const handleBackToCaseStudy =
       () => {
@@ -396,80 +295,65 @@ const GuidedImprovementAnalysisPage =
         );
       };
 
-    if (!caseStudy) {
+    // -------------------------------------------------------------------------
+    // Loading / error states
+    // -------------------------------------------------------------------------
+
+    if (isLoading) {
       return (
         <GuidedImprovementPageLayout>
-          <GuidedImprovementPageErrorState
-            title="Case Study Not Found"
-            description="The case study required for this improvement analysis is unavailable. Return to the case-study library and select an available case study."
-            primaryAction={{
-              label:
-                "Back to Case Study",
-
-              onClick:
-                handleBackToCaseStudy,
-            }}
-            secondaryAction={{
-              label:
-                "Return to Dashboard",
-
-              onClick:
-                handleReturnDashboard,
-            }}
-          />
-        </GuidedImprovementPageLayout>
-      );
-    }
-
-    /*
-     * The empty string values that can exist in
-     * SetupAnswers are also rejected here. This
-     * narrows the values to their official types.
-     */
-    if (
-      !baselineResult ||
-      !answers ||
-      !assessmentMethod ||
-      !serviceApplicability ||
-      !domainPresence ||
-      !buildingType ||
-      !climateZone ||
-      !services
-    ) {
-      return (
-        <GuidedImprovementPageLayout>
-          <GuidedImprovementPageErrorState
-            title="Assessment Data Unavailable"
-            description="The complete assessment data required for the Guided Improvement Analysis are unavailable. Open the case study from the case-study library and complete the assessment again."
-            primaryAction={{
-              label:
-                "Back to Case Study",
-
-              onClick:
-                handleBackToCaseStudy,
-            }}
-            secondaryAction={{
-              label:
-                "Return to Dashboard",
-
-              onClick:
-                handleReturnDashboard,
-            }}
-          />
+          <PageState
+            isLoading={true}
+            error={null}
+          >
+            <div />
+          </PageState>
         </GuidedImprovementPageLayout>
       );
     }
 
     if (
-      !guidedAnalysis ||
-      guidedAnalysis
-        .questions.length === 0
+      loadError ||
+      !data
     ) {
       return (
         <GuidedImprovementPageLayout>
           <GuidedImprovementPageErrorState
             title="Guided Improvement Analysis Unavailable"
-            description="The improvement questions could not be generated from the calculated assessment result. Return to the case-study library and complete the assessment again."
+            description={
+              loadError ??
+              "The Guided Improvement Analysis could not be loaded. Complete the preceding Case Study stages before opening this page."
+            }
+            primaryAction={{
+              label:
+                "Back to Results",
+
+              onClick: () =>
+                navigate(
+                  CASE_STUDY_ROUTES
+                    .results,
+                ),
+            }}
+            secondaryAction={{
+              label:
+                "Back to Case Study",
+
+              onClick:
+                handleBackToCaseStudy,
+            }}
+          />
+        </GuidedImprovementPageLayout>
+      );
+    }
+
+    if (
+      questions.length === 0
+    ) {
+      return (
+        <GuidedImprovementPageLayout>
+          <GuidedImprovementPageErrorState
+            title="Guided Improvement Analysis Unavailable"
+            description="The backend could not generate the improvement questions from the current assessment result. Return to the case study and complete the assessment again."
             primaryAction={{
               label:
                 "Back to Case Study",
@@ -490,368 +374,174 @@ const GuidedImprovementAnalysisPage =
     }
 
     return (
-      <GuidedImprovementAnalysisContent
-        caseStudy={
-          caseStudy
-        }
-        baselineResult={
-          baselineResult
-        }
-        answers={
-          answers
-        }
-        assessmentMethod={
-          assessmentMethod
-        }
-        serviceApplicability={
-          serviceApplicability
-        }
-        domainPresence={
-          domainPresence
-        }
-        buildingType={
-          buildingType
-        }
-        climateZone={
-          climateZone
-        }
-        services={
-          services
-        }
-        guidedAnalysis={
-          guidedAnalysis
-        }
-        initialProgress={
-          savedProgress
-            ?.guidedImprovement ??
-          null
-        }
-      />
-    );
-  };
+      <GuidedImprovementPageLayout>
+        <CaseStudyPageHeader
+          currentStage="guided-improvement-analysis"
+          allowedStages={
+            sharedProgress
+              ?.allowedStages
+          }
+          nextStage={
+            sharedProgress
+              ?.nextStage
+          }
+        />
 
-const GuidedImprovementAnalysisContent = ({
-  caseStudy,
-  baselineResult,
-  answers,
-  assessmentMethod,
-  serviceApplicability,
-  domainPresence,
-  buildingType,
-  climateZone,
-  services,
-  guidedAnalysis,
-  initialProgress,
-}: GuidedImprovementAnalysisContentProps) => {
-  const navigate = useNavigate();
+        <div className="mt-10 min-w-0 max-w-full space-y-6">
+          <GuidedImprovementHero />
 
-  const {
-    saveGuidedImprovementProgress,
-    completeSimulation,
-  } = useCaseStudyProgress();
+          {!shouldShowSimulationPreparation &&
+          !shouldShowNoCandidate &&
+          currentQuestion &&
+          resolvedContext ? (
+            <>
+              <GuidedImprovementFlow />
 
-  const investigationCardRef =
-    useRef<HTMLDivElement | null>(
-      null,
-    );
+              <div
+                ref={
+                  investigationCardRef
+                }
+                className="min-w-0 max-w-full scroll-mt-24"
+              >
+                <GuidedImprovementQuestionCard
+                  questions={
+                    questions
+                  }
+                  currentIndex={
+                    currentIndex
+                  }
+                  currentQuestion={
+                    currentQuestion
+                  }
+                  selectedOptionValue={
+                    selectedOptionValue
+                  }
+                  feedback={
+                    feedback
+                  }
+                  resolvedImpactCriterion={
+                    resolvedContext
+                      .highestImpactCriterion
+                  }
+                  resolvedTechnicalDomain={
+                    resolvedContext
+                      .highestWeightTechnicalDomain
+                  }
+                  isChecking={
+                    isChecking
+                  }
+                  isAdvancing={
+                    isAdvancing
+                  }
+                  hasSimulationScenario={
+                    hasSimulationScenario
+                  }
+                  domainWeightingTable={
+                    resolvedContext
+                      .domainWeightingTable
+                  }
+                  serviceMaximumImpactScoresTable={
+                    resolvedContext
+                      .serviceMaximumImpactScoresTable
+                  }
+                  onSelectOption={
+                    selectOption
+                  }
+                  onCheckAnswer={() => {
+                    void checkAnswer();
+                  }}
+                  onNextQuestion={() => {
+                    void handleAdvance();
+                  }}
+                  onContinueToSimulation={() => {
+                    void handleAdvance();
+                  }}
+                  isLastQuestion={
+                    isLastQuestion
+                  }
+                />
 
-  const simulationPreparationRef =
-    useRef<HTMLDivElement | null>(
-      null,
-    );
+                {actionError ? (
+                  <div
+                    role="alert"
+                    className="mt-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700"
+                  >
+                    <AlertCircle
+                      size={18}
+                      className="mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
 
-  const [
-    simulationRunError,
-    setSimulationRunError,
-  ] = useState(false);
+                    <p>
+                      {actionError}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
 
-  const guidedAnalysisState =
-    useGuidedImprovementAnalysis({
-      questions:
-        guidedAnalysis.questions,
-
-      initialProgress,
-    });
-
-  const {
-    hasRunSimulation,
-    runSimulation,
-  } = useSimulation({
-    services,
-    answers,
-    assessmentMethod,
-    serviceApplicability,
-    domainPresence,
-    buildingType,
-    climateZone,
-
-    currentResult:
-      baselineResult,
-
-    findings:
-      guidedAnalysis.findings,
-  });
-
-  useEffect(() => {
-    saveGuidedImprovementProgress(
-      caseStudy.id,
-      guidedAnalysisState.progress,
-    );
-  }, [
-    caseStudy.id,
-    guidedAnalysisState.progress,
-    saveGuidedImprovementProgress,
-  ]);
-
-  const shouldShowSimulationPreparation =
-    guidedAnalysisState.isCompleted &&
-    guidedAnalysis.findings !== null;
-
-  const shouldShowNoCandidate =
-    guidedAnalysisState.isCompleted &&
-    guidedAnalysis.findings === null;
-
-  /*
-   * The simulation scenario replaces the final
-   * investigation question. Scroll after React has
-   * rendered the new content, not before it exists.
-   */
-  useEffect(() => {
-    if (
-      !shouldShowSimulationPreparation &&
-      !shouldShowNoCandidate
-    ) {
-      return;
-    }
-
-    const animationFrame =
-      window.requestAnimationFrame(
-        () => {
-          simulationPreparationRef
-            .current
-            ?.scrollIntoView({
-              block: "start",
-              behavior: "auto",
-            });
-        },
-      );
-
-    return () => {
-      window.cancelAnimationFrame(
-        animationFrame,
-      );
-    };
-  }, [
-    shouldShowSimulationPreparation,
-    shouldShowNoCandidate,
-  ]);
-
-  const scrollToInvestigationCard = () => {
-    investigationCardRef
-      .current
-      ?.scrollIntoView({
-        block: "start",
-        behavior: "auto",
-      });
-  };
-
-  const handleNextQuestion = () => {
-    scrollToInvestigationCard();
-
-    guidedAnalysisState
-      .goToNextQuestion();
-  };
-
-  const handleShowSimulationScenario = () => {
-    setSimulationRunError(
-      false,
-    );
-
-    guidedAnalysisState
-      .goToNextQuestion();
-  };
-
-  const handleRunSimulation = () => {
-    setSimulationRunError(
-      false,
-    );
-
-    try {
-      const simulationResult =
-        runSimulation();
-
-      /*
-       * A null result means that the simulation
-       * could not produce a valid recalculation.
-       * Do not fail silently and do not navigate.
-       */
-      if (!simulationResult) {
-        setSimulationRunError(
-          true,
-        );
-
-        return;
-      }
-
-      completeSimulation(
-        caseStudy.id,
-        simulationResult,
-      );
-
-      navigate(
-        CASE_STUDY_ROUTES
-          .simulationResults,
-        {
-          state: {
-            simulationResult,
-            caseStudy,
-          },
-        },
-      );
-    } catch {
-      setSimulationRunError(
-        true,
-      );
-    }
-  };
-
-  const handleReturnDashboard = () => {
-    navigate(ROUTES.dashboard);
-  };
-
-  return (
-    <GuidedImprovementPageLayout>
-      <CaseStudyPageHeader
-        currentStage="guided-improvement-analysis"
-      />
-
-      <div className="mt-10 min-w-0 max-w-full space-y-6">
-        <GuidedImprovementHero />
-
-        {!shouldShowSimulationPreparation &&
-        !shouldShowNoCandidate &&
-        guidedAnalysisState.currentQuestion ? (
-          <>
-            <GuidedImprovementFlow />
-
+          {shouldShowSimulationPreparation &&
+          findings ? (
             <div
-              ref={investigationCardRef}
-              className="min-w-0 max-w-full scroll-mt-24"
+              ref={
+                simulationPreparationRef
+              }
+              className="scroll-mt-24 space-y-6"
             >
-              <GuidedImprovementQuestionCard
-                questions={
-                  guidedAnalysis
-                    .questions
+              <SelectedSimulationScenarioCard
+                findings={
+                  findings
                 }
-                currentIndex={
-                  guidedAnalysisState
-                    .currentIndex
+              />
+
+              <RunSimulationCard
+                onRunSimulation={() => {
+                  void handleRunSimulation();
+                }}
+                /*
+                 * A successful run immediately navigates
+                 * to Simulation Results, so this page no
+                 * longer needs a duplicated local
+                 * "simulation completed" state.
+                 */
+                isSimulationRun={
+                  false
                 }
-                currentQuestion={
-                  guidedAnalysisState
-                    .currentQuestion
-                }
-                selectedOptionValue={
-                  guidedAnalysisState
-                    .selectedOptionValue
-                }
-                feedback={
-                  guidedAnalysisState
-                    .feedback
-                }
-                assessmentMethod={
-                  assessmentMethod
-                }
-                hasSimulationScenario={
-                  guidedAnalysis
-                    .findings !== null
-                }
-                buildingType={
-                  buildingType
-                }
-                climateZone={
-                  climateZone
-                }
-                services={
-                  services
-                }
-                servicesByDomain={
-                  baselineResult
-                    .servicesByDomain
-                }
-                onSelectOption={
-                  guidedAnalysisState
-                    .selectOption
-                }
-                onCheckAnswer={
-                  guidedAnalysisState
-                    .checkAnswer
-                }
-                onNextQuestion={
-                  handleNextQuestion
-                }
-                onContinueToSimulation={
-                  handleShowSimulationScenario
-                }
-                isLastQuestion={
-                  guidedAnalysisState
-                    .isLastQuestion
+              />
+
+              {simulationRunError ? (
+                <SimulationRunErrorState />
+              ) : null}
+            </div>
+          ) : null}
+
+          {shouldShowNoCandidate ? (
+            <div
+              ref={
+                simulationPreparationRef
+              }
+              className="scroll-mt-24"
+            >
+              <NoUpgradeCandidateState
+                onReturnDashboard={
+                  handleReturnDashboard
                 }
               />
             </div>
-          </>
-        ) : null}
+          ) : null}
+        </div>
+      </GuidedImprovementPageLayout>
+    );
+  };
 
-        {shouldShowSimulationPreparation &&
-        guidedAnalysis.findings ? (
-          <div
-            ref={
-              simulationPreparationRef
-            }
-            className="scroll-mt-24 space-y-6"
-          >
-            <SelectedSimulationScenarioCard
-              findings={
-                guidedAnalysis
-                  .findings
-              }
-            />
-
-            <RunSimulationCard
-              onRunSimulation={
-                handleRunSimulation
-              }
-              isSimulationRun={
-                hasRunSimulation &&
-                !simulationRunError
-              }
-            />
-
-            {simulationRunError ? (
-              <SimulationRunErrorState />
-            ) : null}
-          </div>
-        ) : null}
-
-        {shouldShowNoCandidate ? (
-          <div
-            ref={
-              simulationPreparationRef
-            }
-            className="scroll-mt-24"
-          >
-            <NoUpgradeCandidateState
-              onReturnDashboard={handleReturnDashboard}
-            />
-          </div>
-        ) : null}
-      </div>
-    </GuidedImprovementPageLayout>
-  );
-};
+// -----------------------------------------------------------------------------
+// No candidate
+// -----------------------------------------------------------------------------
 
 type NoUpgradeCandidateStateProps = {
-  onReturnDashboard: () => void;
+  onReturnDashboard:
+    () => void;
 };
 
 const NoUpgradeCandidateState = ({
@@ -884,7 +574,9 @@ const NoUpgradeCandidateState = ({
 
       <div className="mt-6 border-t border-amber-200 pt-5">
         <PrimaryButton
-          onClick={onReturnDashboard}
+          onClick={
+            onReturnDashboard
+          }
           className="w-full sm:w-auto"
         >
           <span className="inline-flex items-center justify-center gap-2">
@@ -902,34 +594,43 @@ const NoUpgradeCandidateState = ({
   );
 };
 
-const SimulationRunErrorState = () => {
-  return (
-    <section
-      role="alert"
-      className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm"
-    >
-      <div className="flex items-start gap-3">
-        <AlertCircle
-          size={20}
-          className="mt-0.5 shrink-0 text-amber-700"
-          aria-hidden="true"
-        />
+// -----------------------------------------------------------------------------
+// Simulation error
+// -----------------------------------------------------------------------------
 
-        <div className="min-w-0">
-          <h2 className="text-xl font-extrabold leading-7 text-amber-900">
-            Simulation Could Not Be Completed
-          </h2>
+const SimulationRunErrorState =
+  () => {
+    return (
+      <section
+        role="alert"
+        className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <AlertCircle
+            size={20}
+            className="mt-0.5 shrink-0 text-amber-700"
+            aria-hidden="true"
+          />
 
-          <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">
-            The recommended service upgrade could not produce a valid
-            simulation result. Review the selected scenario and run the
-            simulation again.
-          </p>
+          <div className="min-w-0">
+            <h2 className="text-xl font-extrabold leading-7 text-amber-900">
+              Simulation Could Not Be Completed
+            </h2>
+
+            <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">
+              The recommended service upgrade could not produce a valid
+              simulation result. Review the selected scenario and run the
+              simulation again.
+            </p>
+          </div>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
+    );
+  };
+
+// -----------------------------------------------------------------------------
+// Error state
+// -----------------------------------------------------------------------------
 
 type PageAction = {
   label: string;
@@ -976,23 +677,29 @@ const GuidedImprovementPageErrorState = ({
         <div className="mt-6 flex flex-col gap-3 border-t border-amber-200 pt-5 sm:flex-row">
           <PrimaryButton
             onClick={
-              primaryAction.onClick
+              primaryAction
+                .onClick
             }
             className="w-full sm:w-auto"
           >
-            {primaryAction.label}
+            {
+              primaryAction
+                .label
+            }
           </PrimaryButton>
 
           {secondaryAction ? (
             <button
               type="button"
               onClick={
-                secondaryAction.onClick
+                secondaryAction
+                  .onClick
               }
               className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-amber-200 bg-white px-5 py-3 text-sm font-extrabold text-amber-900 shadow-sm transition-colors duration-200 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:w-auto"
             >
               {
-                secondaryAction.label
+                secondaryAction
+                  .label
               }
             </button>
           ) : null}
@@ -1001,6 +708,10 @@ const GuidedImprovementPageErrorState = ({
     </div>
   );
 };
+
+// -----------------------------------------------------------------------------
+// Layout
+// -----------------------------------------------------------------------------
 
 type GuidedImprovementPageLayoutProps = {
   children: ReactNode;

@@ -1,12 +1,16 @@
 // client/src/features/caseStudy/components/assessment/ServiceAssessmentWorkspace.tsx
 
 import type {
+  CaseStudyAssessmentService,
+} from "../../assessment/caseStudyAssessment.presentation";
+
+import type {
   ServiceAnswer,
-  SriService,
 } from "../../types/caseStudy.types";
 
-import { getImpactCriteriaForService } from "../../data/sriServiceCatalogue";
-import { getServiceAnswer } from "../../utils/assessment.utils";
+import {
+  createDefaultServiceAnswer,
+} from "../../utils/caseStudyInitialState.utils";
 
 import AssessmentNavigation from "./AssessmentNavigation";
 import FunctionalityLevelSelector from "./FunctionalityLevelSelector";
@@ -16,59 +20,82 @@ import ServiceNavigator from "./ServiceNavigator";
 import ServiceScenarioPanel from "./ServiceScenarioPanel";
 import ShareSelector from "./ShareSelector";
 
-type ScenarioByServiceId = Record<
-  string,
-  {
-    evidence: readonly string[];
-  }
->;
+type ScenarioByServiceId =
+  Record<
+    string,
+    {
+      evidence:
+        readonly string[];
+    }
+  >;
 
 type ServiceAssessmentWorkspaceProps = {
-  services: readonly SriService[];
+  services:
+    readonly CaseStudyAssessmentService[];
 
-  selectedService: SriService | null;
+  isReviewMode?: boolean;
 
-  selectedServiceId: string;
+  selectedService:
+    | CaseStudyAssessmentService
+    | null;
 
-  answers: Record<string, ServiceAnswer>;
+  selectedServiceId:
+    string;
+
+  answers:
+    Record<
+      string,
+      ServiceAnswer
+    >;
 
   onChangeAnswer: (
-    answer: ServiceAnswer,
+    answer:
+      ServiceAnswer,
   ) => void;
 
-  errorsByField?: Record<
-    string,
-    string
-  >;
+  errorsByField?:
+    Record<
+      string,
+      string
+    >;
 
   scenarioByServiceId:
     ScenarioByServiceId;
 
   onSelectService: (
-    serviceId: string,
+    serviceId:
+      string,
   ) => void;
 
   canSelectService: (
-    serviceId: string,
+    serviceId:
+      string,
   ) => boolean;
 
   isServiceValidated: (
-    serviceId: string,
+    serviceId:
+      string,
   ) => boolean;
 
-  canGoPrevious: boolean;
+  canGoPrevious:
+    boolean;
 
-  onPrevious: () => void;
+  onPrevious:
+    () => void;
 
-  onSaveAndNext: () => void;
+  onSaveAndNext:
+    () => void;
 
-  onSubmitAssessment: () => void;
+  onSubmitAssessment:
+    () => void;
 
-  isFinalRemainingService: boolean;
+  isFinalRemainingService:
+    boolean;
 };
 
 const ServiceAssessmentWorkspace = ({
   services,
+  isReviewMode = false,
   selectedService,
   selectedServiceId,
   answers,
@@ -84,7 +111,9 @@ const ServiceAssessmentWorkspace = ({
   onSubmitAssessment,
   isFinalRemainingService,
 }: ServiceAssessmentWorkspaceProps) => {
-  if (!selectedService) {
+  if (
+    !selectedService
+  ) {
     return (
       <section
         role="status"
@@ -98,32 +127,39 @@ const ServiceAssessmentWorkspace = ({
     );
   }
 
-  const answer = getServiceAnswer(
-    selectedService,
-    answers,
-  );
+  const answer =
+    answers[
+      selectedService.id
+    ] ??
+    createDefaultServiceAnswer(
+      selectedService.id,
+    );
 
   const scenarioEvidence =
     scenarioByServiceId[
       selectedService.id
-    ]?.evidence ?? [];
+    ]?.evidence ??
+    [];
 
+  /*
+   * Main SRI impacts now come directly
+   * from the backend Assessment DTO.
+   */
   const impactCriteria =
-    getImpactCriteriaForService(
-      selectedService,
-    );
+    selectedService
+      .impactCriteria;
 
   const methodologyNote =
-    selectedService.methodologyNote?.trim() ||
+    selectedService
+      .methodologyNote
+      ?.trim() ||
     undefined;
 
   const selectedServiceDomId =
-    createSafeId(selectedService.id);
+    createSafeId(
+      selectedService.id,
+    );
 
-  /*
-   * Raw validation errors returned for the
-   * current service.
-   */
   const selectedLevelError =
     errorsByField[
       `${selectedService.id}.selectedLevelId`
@@ -140,15 +176,12 @@ const ServiceAssessmentWorkspace = ({
     ];
 
   /*
-   * Validation feedback is intentionally
-   * revealed in assessment order:
+   * Validation feedback is revealed
+   * in Assessment order:
    *
    * 1. Main functionality level
    * 2. Share
    * 3. Additional functionality level
-   *
-   * A later error is not shown while an
-   * earlier step still requires correction.
    */
   const visibleShareError =
     selectedLevelError
@@ -164,15 +197,35 @@ const ServiceAssessmentWorkspace = ({
   const selectedLevelErrorId =
     `${selectedServiceDomId}-selected-level-error`;
 
-  const updateAnswer = (
-    changes: Partial<ServiceAnswer>,
-  ) => {
-    onChangeAnswer({
-      ...answer,
-      ...changes,
-      serviceId: selectedService.id,
-    });
-  };
+  const updateAnswer =
+    (
+      changes:
+        Partial<
+          ServiceAnswer
+        >,
+    ) => {
+      /*
+       * Review mode is presentation-level
+       * protection only.
+       *
+       * Completed earlier stages remain
+       * immutable in the UI, while the
+       * backend still keeps its canonical
+       * mutation guards.
+       */
+      if (isReviewMode) {
+        return;
+      }
+
+      onChangeAnswer({
+        ...answer,
+        ...changes,
+
+        serviceId:
+          selectedService
+            .id,
+      });
+    };
 
   return (
     <div className="space-y-6">
@@ -184,17 +237,29 @@ const ServiceAssessmentWorkspace = ({
       </p>
 
       <ServiceAssessmentHeader
-        code={selectedService.code}
+        code={
+          selectedService
+            .code
+        }
         serviceGroup={
-          selectedService.serviceGroup
+          selectedService
+            .serviceGroup
         }
         smartReadyService={
-          selectedService.smartReadyService
+          selectedService
+            .smartReadyService
         }
       />
 
+      {/*
+       * Service navigation remains available
+       * in review mode so the learner can
+       * inspect previously submitted services.
+       */}
       <ServiceNavigator
-        services={services}
+        services={
+          services
+        }
         selectedServiceId={
           selectedServiceId
         }
@@ -219,97 +284,127 @@ const ServiceAssessmentWorkspace = ({
        * STEP 1
        * Main functionality level
        */}
-      <div
-        data-assessment-error={
-          selectedLevelError
-            ? "true"
-            : undefined
+      <fieldset
+        disabled={
+          isReviewMode
         }
-        tabIndex={
-          selectedLevelError
-            ? -1
-            : undefined
-        }
-        aria-describedby={
-          selectedLevelError
-            ? selectedLevelErrorId
-            : undefined
-        }
-        className="scroll-mt-24 rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="m-0 min-w-0 border-0 p-0"
       >
-        <FunctionalityLevelSelector
-          serviceId={
-            selectedService.id
+        <div
+          data-assessment-error={
+            selectedLevelError
+              ? "true"
+              : undefined
           }
-          selectedLevelId={
-            answer.selectedLevelId
+          tabIndex={
+            selectedLevelError
+              ? -1
+              : undefined
           }
-          levels={
-            selectedService.functionalityLevels
+          aria-describedby={
+            selectedLevelError
+              ? selectedLevelErrorId
+              : undefined
           }
-          onChangeLevel={(levelId) =>
-            updateAnswer({
-              selectedLevelId: levelId,
-            })
-          }
-        />
-
-        {selectedLevelError ? (
-          <p
-            id={
-              selectedLevelErrorId
+          className="scroll-mt-24 rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          <FunctionalityLevelSelector
+            serviceId={
+              selectedService
+                .id
             }
-            role="alert"
-            className="mt-2 px-1 text-xs font-semibold leading-5 text-red-600"
-          >
-            {selectedLevelError}
-          </p>
-        ) : null}
-      </div>
+            selectedLevelId={
+              answer
+                .selectedLevelId
+            }
+            levels={
+              selectedService
+                .functionalityLevels
+            }
+            onChangeLevel={(
+              levelId,
+            ) =>
+              updateAnswer({
+                selectedLevelId:
+                  levelId,
+              })
+            }
+          />
+
+          {selectedLevelError ? (
+            <p
+              id={
+                selectedLevelErrorId
+              }
+              role="alert"
+              className="mt-2 px-1 text-xs font-semibold leading-5 text-red-600"
+            >
+              {
+                selectedLevelError
+              }
+            </p>
+          ) : null}
+        </div>
+      </fieldset>
 
       {/*
        * STEPS 2 + 3
        *
-       * ShareSelector is responsible for
-       * placing each error directly below
-       * its corresponding activity card
-       * and for marking the exact activity
-       * that should receive focus.
+       * ShareSelector places each error
+       * below its corresponding activity.
        */}
-      <ShareSelector
-        key={selectedService.id}
-        share={answer.share}
-        additionalLevelId={
-          answer.additionalLevelId
+      <fieldset
+        disabled={
+          isReviewMode
         }
-        levels={
-          selectedService.functionalityLevels
-        }
-        shareError={
-          visibleShareError
-        }
-        additionalLevelError={
-          visibleAdditionalLevelError
-        }
-        onChangeShare={(share) =>
-          updateAnswer({
+        className="m-0 min-w-0 border-0 p-0"
+      >
+        <ShareSelector
+          key={
+            selectedService
+              .id
+          }
+          share={
+            answer.share
+          }
+          additionalLevelId={
+            answer
+              .additionalLevelId
+          }
+          levels={
+            selectedService
+              .functionalityLevels
+          }
+          shareError={
+            visibleShareError
+          }
+          additionalLevelError={
+            visibleAdditionalLevelError
+          }
+          onChangeShare={(
             share,
+          ) =>
+            updateAnswer({
+              share,
 
-            additionalLevelId:
-              share === 100
-                ? undefined
-                : answer.additionalLevelId,
-          })
-        }
-        onChangeAdditionalLevel={(
-          levelId,
-        ) =>
-          updateAnswer({
-            additionalLevelId:
-              levelId,
-          })
-        }
-      />
+              additionalLevelId:
+                share ===
+                100
+                  ? undefined
+                  : answer
+                      .additionalLevelId,
+            })
+          }
+          onChangeAdditionalLevel={(
+            levelId,
+          ) =>
+            updateAnswer({
+              additionalLevelId:
+                levelId,
+            })
+          }
+        />
+      </fieldset>
 
       <ServiceInfoRow
         impactCriteria={
@@ -320,40 +415,49 @@ const ServiceAssessmentWorkspace = ({
         }
       />
 
-      <AssessmentNavigation
-        canGoPrevious={
-          canGoPrevious
-        }
-        isFinalRemainingService={
-          isFinalRemainingService
-        }
-        onPrevious={
-          onPrevious
-        }
-        onSaveAndNext={
-          onSaveAndNext
-        }
-        onSubmitAssessment={
-          onSubmitAssessment
-        }
-      />
+      {/*
+       * A reviewed Assessment stage has
+       * already been completed, so there
+       * are no mutation/navigation actions.
+       */}
+      {!isReviewMode ? (
+        <AssessmentNavigation
+          canGoPrevious={
+            canGoPrevious
+          }
+          isFinalRemainingService={
+            isFinalRemainingService
+          }
+          onPrevious={
+            onPrevious
+          }
+          onSaveAndNext={
+            onSaveAndNext
+          }
+          onSubmitAssessment={
+            onSubmitAssessment
+          }
+        />
+      ) : null}
     </div>
   );
 };
 
 const createSafeId = (
-  value: string,
+  value:
+    string,
 ) => {
-  const normalizedValue = value
-    .toLowerCase()
-    .replace(
-      /[^a-z0-9_-]+/g,
-      "-",
-    )
-    .replace(
-      /^-+|-+$/g,
-      "",
-    );
+  const normalizedValue =
+    value
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9_-]+/g,
+        "-",
+      )
+      .replace(
+        /^-+|-+$/g,
+        "",
+      );
 
   return (
     normalizedValue ||

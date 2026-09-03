@@ -16,18 +16,18 @@ import {
   useParams,
 } from "react-router-dom";
 
-import {
-  courseApi,
-} from "../api/courseApi";
-
 import PrimaryButton from "../components/ui/PrimaryButton";
 
 import {
   ROUTES,
 } from "../constants/routes";
 
+import RouteLoadingState from "../components/ui/RouteLoadingState";
+
 import FinalTestFailedCard from "../features/course/components/FinalTestFailedCard";
+
 import FinalTestQuestionCard from "../features/course/components/FinalTestQuestionCard";
+
 import SectionCompletedCard from "../features/course/components/SectionCompletedCard";
 
 import {
@@ -36,7 +36,7 @@ import {
 
 import {
   useCourseProgress,
-} from "../features/course/hooks/useCourseProgress";
+} from "../app/providers/CourseProgressProvider";
 
 import {
   useFinalTestSession,
@@ -61,7 +61,8 @@ const SectionFinalTestPage = () => {
 
   const {
     replaceProgress,
-  } = useCourseProgress();
+  } =
+    useCourseProgress();
 
   const sectionDefinition =
     useMemo(() => {
@@ -116,8 +117,16 @@ const SectionFinalTestPage = () => {
           sectionDefinition &&
           finalTestStep,
         ),
-    });
 
+      /*
+       * A terminal answer response includes
+       * the new canonical Course progress.
+       * The session hook applies it here,
+       * without a follow-up GET.
+       */
+      onProgressChange:
+        replaceProgress,
+    });
 
   const nextSectionDefinition =
     useMemo(() => {
@@ -126,11 +135,12 @@ const SectionFinalTestPage = () => {
       }
 
       const currentIndex =
-        courseDefinition.sections.findIndex(
-          (section) =>
-            section.id ===
-            sectionDefinition.id,
-        );
+        courseDefinition.sections
+          .findIndex(
+            (section) =>
+              section.id ===
+              sectionDefinition.id,
+          );
 
       if (currentIndex < 0) {
         return null;
@@ -157,9 +167,9 @@ const SectionFinalTestPage = () => {
 
   if (session.isLoading) {
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        Loading final test...
-      </div>
+      <RouteLoadingState
+        label="Loading final test..."
+      />
     );
   }
 
@@ -284,37 +294,15 @@ const SectionFinalTestPage = () => {
           block: "start",
         });
     };
-  
+
   const handleSubmitAnswer =
     async () => {
-      const nextAttempt =
-        await session.submitAnswer();
-
-      if (
-        !nextAttempt ||
-        nextAttempt.status ===
-          "in-progress"
-      ) {
-        return;
-      }
-
-      /**
-     * Refresh Course progress after the
-     * final-test attempt is completed.
-     */
-      try {
-        const nextProgress =
-          await courseApi.getProgress();
-
-        replaceProgress(
-          nextProgress,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to refresh course progress.",
-          error,
-        );
-      }
+      /*
+       * The session hook owns submission,
+       * terminal status handling and Course
+       * progress synchronization.
+       */
+      await session.submitAnswer();
     };
 
   const continueToNextQuestion =
@@ -413,7 +401,9 @@ const SectionFinalTestPage = () => {
 
 type FinalTestUnavailableProps = {
   message?: string;
-  onReturn: () => void;
+
+  onReturn:
+    () => void;
 };
 
 const FinalTestUnavailable = ({
@@ -434,9 +424,9 @@ const FinalTestUnavailable = ({
       </h1>
 
       <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-       {message ??
-         "The final test could not be loaded."}
-     </p>
+        {message ??
+          "The final test could not be loaded."}
+      </p>
 
       <div className="mt-6 flex justify-center">
         <PrimaryButton

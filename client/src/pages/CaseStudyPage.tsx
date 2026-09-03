@@ -1,10 +1,6 @@
 // client/src/pages/CaseStudyPage.tsx
 
 import {
-  useMemo,
-} from "react";
-
-import {
   BarChart3,
   Building2,
   CheckCircle2,
@@ -35,28 +31,17 @@ import {
 } from "../constants/routes";
 
 import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
-
-import {
+  getCaseStudyPrimaryActionPresentation,
   getCaseStudyProgressPresentation,
 } from "../features/caseStudy/progress/caseStudyProgress.presentation";
 
 import {
   useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
-
-import {
-  courseDefinition,
-} from "../features/course/data/courseDefinition";
+} from "../app/providers/CaseStudyProgressProvider";
 
 import {
   useCourseProgress,
-} from "../features/course/hooks/useCourseProgress";
-
-import {
-  buildCourseOverview,
-} from "../features/course/utils/buildCourseOverview";
+} from "../app/providers/CourseProgressProvider";
 
 type LearningObjective = {
   icon: LucideIcon;
@@ -126,16 +111,6 @@ const CaseStudyPage = () => {
     useNavigate();
 
   /*
-   * There is currently one practical
-   * case study in the learning path.
-   */
-  const caseStudy =
-    caseStudyMockData[0] ?? null;
-
-  const caseStudyId =
-    caseStudy?.id ?? null;
-
-  /*
    * Course progress controls whether the
    * practical case study is unlocked.
    */
@@ -143,61 +118,79 @@ const CaseStudyPage = () => {
     progress: courseProgress,
   } = useCourseProgress();
 
-  const courseOverview =
-    useMemo(
-      () =>
-        buildCourseOverview(
-          courseDefinition,
-          courseProgress,
-        ),
-      [courseProgress],
-    );
+  /*
+   * Course completion and Case Study access
+   * are canonical backend Course-progress
+   * decisions.
+   *
+   * This page no longer derives them from
+   * the frontend Course definition.
+   */
+  const completedSections =
+    courseProgress
+      .completedSections;
 
   const totalSections =
-    courseOverview.sections.length;
-
-  const completedSections =
-    courseOverview.sections.filter(
-      (section) =>
-        section.status ===
-        "completed",
-    ).length;
+    courseProgress
+      .totalSections;
 
   const isUnlocked =
-    totalSections > 0 &&
-    completedSections ===
-      totalSections;
+    courseProgress
+      .isCaseStudyUnlocked;
 
   /*
-   * Case-study progress controls the
-   * dynamic action shown at the bottom.
+   * Case Study progress comes from the shared
+   * provider used by the whole protected app.
    */
   const {
-    getProgressForCaseStudy,
-    getStatusForCaseStudy,
-    getNextActionForCaseStudy,
-    markStageVisited,
-    startNewPracticeAttempt,
-  } = useCaseStudyProgress();
+    progress,
+    isLoading:
+      isCaseStudyProgressLoading,
+    isStartingPracticeAgain,
+    error:
+      caseStudyProgressError,
+    startPracticeAgain,
+  } =
+    useCaseStudyProgress();
 
-  const progressRecord =
-    caseStudyId
-      ? getProgressForCaseStudy(
-          caseStudyId,
-        )
-      : null;
-
+  /*
+   * The backend is the source of truth for
+   * the current Case Study journey status.
+   *
+   * "not-started" is used only as a temporary
+   * presentation fallback while progress is
+   * loading.
+   */
   const caseStudyStatus =
-    caseStudyId
-      ? getStatusForCaseStudy(
-          caseStudyId,
-        )
-      : "not-started";
+    progress
+      ?.journeyStatus ??
+    "not-started";
 
+  /*
+   * The backend has already determined:
+   * - journeyStatus
+   * - nextStage
+   * - isPracticeAttempt
+   *
+   * The presentation helper only converts
+   * them into UI text and a React route.
+   */
   const nextAction =
-    caseStudyId
-      ? getNextActionForCaseStudy(
-          caseStudyId,
+    progress
+      ? getCaseStudyPrimaryActionPresentation(
+          {
+            status:
+              progress
+                .journeyStatus,
+
+            nextStage:
+              progress
+                .nextStage,
+
+            isPracticeAttempt:
+              progress
+                .isPracticeAttempt,
+          },
         )
       : null;
 
@@ -207,33 +200,37 @@ const CaseStudyPage = () => {
     );
 
   const hasCurrentAttemptStarted =
-    caseStudyStatus !==
-    "not-started";
+    progress !== null &&
+    progress
+      .journeyStatus !==
+      "not-started";
 
   const isCurrentAttemptCompleted =
-    caseStudyStatus ===
+    progress
+      ?.journeyStatus ===
     "completed";
 
+  /*
+   * An official attempt represents a
+   * permanently completed Case Study.
+   *
+   * A separate active practice attempt may
+   * exist at the same time.
+   */
   const hasCompletedCaseStudy =
-    progressRecord?.completion !==
-    null &&
-    progressRecord?.completion !==
-    undefined;
+    progress
+      ?.officialAttemptId !=
+    null;
 
   const handlePrimaryAction =
     () => {
       if (
         !isUnlocked ||
-        !caseStudyId ||
-        !nextAction
+        !nextAction ||
+        isCaseStudyProgressLoading
       ) {
         return;
       }
-
-      markStageVisited(
-        caseStudyId,
-        nextAction.stage,
-      );
 
       navigate(
         nextAction.path,
@@ -241,14 +238,13 @@ const CaseStudyPage = () => {
     };
 
   const handlePracticeAgain =
-    () => {
-      if (!caseStudyId) {
+    async () => {
+      const nextProgress =
+        await startPracticeAgain();
+
+      if (!nextProgress) {
         return;
       }
-
-      startNewPracticeAttempt(
-        caseStudyId,
-      );
 
       navigate(
         CASE_STUDY_ROUTES.setup,
@@ -494,8 +490,10 @@ const CaseStudyPage = () => {
               <button
                 type="button"
                 disabled={
-                  !caseStudyId ||
-                  !nextAction
+                  !nextAction ||
+                  isCaseStudyProgressLoading ||
+                  caseStudyProgressError !==
+                    null
                 }
                 onClick={
                   handlePrimaryAction
@@ -523,12 +521,16 @@ const CaseStudyPage = () => {
                   focus-visible:ring-4
                   focus-visible:ring-blue-100
                   disabled:cursor-not-allowed
-                  disabled:bg-slate-300
+                  disabled:!bg-blue-700
+                  disabled:!text-white
+                  disabled:!opacity-100
                   sm:w-auto
                 "
               >
-                {nextAction?.label ??
-                  "Start Case Study"}
+                {isCaseStudyProgressLoading
+                  ? "Loading..."
+                  : nextAction?.label ??
+                    "Start Case Study"}
 
                 <ForwardArrowIcon
                   size={20}
@@ -538,8 +540,11 @@ const CaseStudyPage = () => {
               {isCurrentAttemptCompleted ? (
                 <button
                   type="button"
-                  onClick={
-                    handlePracticeAgain
+                  onClick={() => {
+                    void handlePracticeAgain();
+                  }}
+                  disabled={
+                    isStartingPracticeAgain
                   }
                   className="
                     inline-flex
@@ -565,6 +570,8 @@ const CaseStudyPage = () => {
                     focus-visible:ring-4
                     focus-visible:ring-blue-100
                     sm:w-auto
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
                   "
                 >
                   <RotateCcw
@@ -572,10 +579,23 @@ const CaseStudyPage = () => {
                     aria-hidden="true"
                   />
 
-                  Practice Again
+                  {isStartingPracticeAgain
+                    ? "Starting..."
+                    : "Practice Again"}
                 </button>
               ) : null}
             </div>
+
+            {caseStudyProgressError ? (
+              <p
+                role="alert"
+                className="mt-3 text-sm font-semibold text-red-600"
+              >
+                {
+                  caseStudyProgressError
+                }
+              </p>
+            ) : null}
           </div>
         ) : (
           <LockedCaseStudyMessage
@@ -830,4 +850,5 @@ const ObjectiveItem = ({
     </div>
   );
 };
+
 export default CaseStudyPage;

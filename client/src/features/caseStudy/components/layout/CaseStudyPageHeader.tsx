@@ -13,6 +13,10 @@ import {
 } from "../../../../constants/routes";
 
 import type {
+  CaseStudyRouteStage,
+} from "../../progress/caseStudyProgress.types";
+
+import type {
   CaseStudyJourneyStage,
 } from "../../types/caseStudy.types";
 
@@ -20,42 +24,66 @@ import CaseStudyJourneyStepper from "./CaseStudyJourneyStepper";
 
 export type CaseStudyBreadcrumbItem = {
   label: string;
+
   to?: string;
+
+  isCurrentPage?: boolean;
+
+  isAccessible?: boolean;
 };
 
 export type CaseStudyPageHeaderProgress = {
   label: string;
+
   value: number;
+
   text: string;
 };
 
 type CaseStudyNavigationStage = {
-  id: CaseStudyJourneyStage;
-  label: string;
-  path: string;
+  /*
+   * Presentation stage used by the
+   * header and journey stepper.
+   */
+  id:
+    CaseStudyJourneyStage;
+
+  /*
+   * Canonical backend route stage used
+   * by progress.allowedStages.
+   */
+  routeStage:
+    CaseStudyRouteStage;
+
+  label:
+    string;
+
+  path:
+    string;
 };
 
 type Props = {
   currentStage:
     CaseStudyJourneyStage;
 
+  allowedStages?:
+    readonly CaseStudyRouteStage[];
+
+  nextStage?:
+    CaseStudyRouteStage;
+
   progress?:
     CaseStudyPageHeaderProgress;
 };
 
-/*
- * This configuration is used only for the
- * breadcrumb path.
- *
- * The breadcrumb is automatically truncated
- * at the current page. Future stages are never
- * included.
- */
 const navigationStages:
   readonly CaseStudyNavigationStage[] = [
     {
       id:
         "building-information",
+
+      routeStage:
+        "setup",
 
       label:
         "Building Information",
@@ -63,9 +91,13 @@ const navigationStages:
       path:
         CASE_STUDY_ROUTES.setup,
     },
+
     {
       id:
         "service-assessment",
+
+      routeStage:
+        "assessment",
 
       label:
         "Service Assessment",
@@ -73,8 +105,12 @@ const navigationStages:
       path:
         CASE_STUDY_ROUTES.assessment,
     },
+
     {
       id:
+        "results",
+
+      routeStage:
         "results",
 
       label:
@@ -83,8 +119,12 @@ const navigationStages:
       path:
         CASE_STUDY_ROUTES.results,
     },
+
     {
       id:
+        "guided-improvement-analysis",
+
+      routeStage:
         "guided-improvement-analysis",
 
       label:
@@ -94,8 +134,12 @@ const navigationStages:
         CASE_STUDY_ROUTES
           .guidedImprovementAnalysis,
     },
+
     {
       id:
+        "simulation-results",
+
+      routeStage:
         "simulation-results",
 
       label:
@@ -110,6 +154,12 @@ const navigationStages:
 const buildBreadcrumbs = (
   currentStage:
     CaseStudyJourneyStage,
+
+  allowedStages?:
+    readonly CaseStudyRouteStage[],
+
+  nextStage?:
+    CaseStudyRouteStage,
 ): CaseStudyBreadcrumbItem[] => {
   const currentStageIndex =
     navigationStages.findIndex(
@@ -118,24 +168,88 @@ const buildBreadcrumbs = (
         currentStage,
     );
 
-  /*
-   * The current stage should always exist,
-   * but the fallback keeps the header safe
-   * if an unsupported value is introduced.
-   */
   if (currentStageIndex < 0) {
     return [
       {
         label:
           "Case Study",
+
+        to:
+          CASE_STUDY_ROUTES.home,
       },
     ];
   }
 
+  const canonicalStageIndex =
+    nextStage
+      ? navigationStages.findIndex(
+          (stage) =>
+            stage.routeStage ===
+            nextStage,
+        )
+      : currentStageIndex;
+
+  /*
+   * Special case:
+   *
+   * During Practice Again the learner may
+   * explicitly open the permanent official
+   * Simulation Results from the Dashboard.
+   *
+   * That historical result is not part of
+   * the current practice journey, so do not
+   * display all intermediate future stages.
+   */
+  if (
+    canonicalStageIndex >= 0 &&
+    currentStageIndex >
+      canonicalStageIndex
+  ) {
+    const currentNavigationStage =
+      navigationStages[
+        currentStageIndex
+      ];
+
+    return [
+      {
+        label:
+          "Case Study",
+
+        to:
+          CASE_STUDY_ROUTES.home,
+
+        isAccessible:
+          true,
+      },
+
+      {
+        label:
+          currentNavigationStage.label,
+
+        isCurrentPage:
+          true,
+
+        isAccessible:
+          true,
+      },
+    ];
+  }
+
+  /*
+   * The breadcrumb belongs to the CURRENT
+   * attempt, therefore its visible extent
+   * comes from backend nextStage rather than
+   * from the broader route-access list.
+   */
+  const lastVisibleIndex =
+    canonicalStageIndex >= 0
+      ? canonicalStageIndex
+      : currentStageIndex;
+
   const visibleStages =
     navigationStages.slice(
       0,
-      currentStageIndex + 1,
+      lastVisibleIndex + 1,
     );
 
   return [
@@ -145,30 +259,41 @@ const buildBreadcrumbs = (
 
       to:
         CASE_STUDY_ROUTES.home,
+
+      isAccessible:
+        true,
     },
 
     ...visibleStages.map(
       (
         stage,
-        index,
       ): CaseStudyBreadcrumbItem => {
-        const isCurrentStage =
-          index ===
-          visibleStages.length - 1;
+        const isCurrentPage =
+          stage.id ===
+          currentStage;
+
+        const isAccessible =
+          allowedStages
+            ? allowedStages.includes(
+                stage.routeStage,
+              )
+            : true;
 
         return {
           label:
             stage.label,
 
-          /*
-           * Only previous stages are links.
-           * The current page is displayed as
-           * plain text with aria-current.
-           */
           to:
-            isCurrentStage
-              ? undefined
-              : stage.path,
+            !isCurrentPage &&
+            isAccessible
+              ? stage.path
+              : undefined,
+
+          isCurrentPage,
+
+          isAccessible:
+            isCurrentPage ||
+            isAccessible,
         };
       },
     ),
@@ -177,12 +302,17 @@ const buildBreadcrumbs = (
 
 const CaseStudyPageHeader = ({
   currentStage,
+  allowedStages,
+  nextStage,
   progress,
 }: Props) => {
   const breadcrumbs =
     buildBreadcrumbs(
       currentStage,
+      allowedStages,
+      nextStage,
     );
+
 
   return (
     <header>
@@ -236,13 +366,16 @@ const Breadcrumbs = ({
               index ===
               items.length - 1;
 
+            const isCurrentPage =
+              item.isCurrentPage ===
+              true;
+
             return (
               <li
                 key={`${item.label}-${index}`}
                 className="flex min-w-0 items-center gap-2"
               >
-                {item.to &&
-                !isLast ? (
+                {item.to ? (
                   <Link
                     to={
                       item.to
@@ -256,7 +389,7 @@ const Breadcrumbs = ({
                 ) : (
                   <span
                     aria-current={
-                      isLast
+                      isCurrentPage
                         ? "page"
                         : undefined
                     }
@@ -264,9 +397,12 @@ const Breadcrumbs = ({
                       text-xs
                       font-extrabold
                       ${
-                        isLast
+                        isCurrentPage
                           ? "text-blue-700"
-                          : "text-slate-500"
+                          : item.isAccessible ===
+                              false
+                            ? "text-slate-300"
+                            : "text-slate-500"
                       }
                     `}
                   >

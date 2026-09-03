@@ -20,16 +20,19 @@ import {
 } from "../../data/sriOfficialConstants";
 
 import type {
-  SimulationResult,
+  CaseStudySimulationResult,
+} from "../../simulation/caseStudySimulation.types";
+
+import type {
   TechnicalDomainName,
 } from "../../types/caseStudy.types";
 
 type TechnicalDomainSimulationChartProps = {
-  result: SimulationResult;
+  result: CaseStudySimulationResult;
 };
 
 type SimulationSnapshot =
-  SimulationResult["before"];
+  CaseStudySimulationResult["before"];
 
 type ChartRow = {
   domain: TechnicalDomainName;
@@ -254,7 +257,7 @@ const TechnicalDomainSimulationChart = ({
 };
 
 const buildChartData = (
-  result: SimulationResult,
+  result: CaseStudySimulationResult,
 ): ChartRow[] | null => {
   const beforeDomains =
     getAssessedDomains(

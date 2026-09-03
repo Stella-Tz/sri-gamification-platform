@@ -1,179 +1,109 @@
-// client/src/features/course/utils/buildCourseOverview.ts
+//client\src\features\course\utils\buildCourseOverview.ts
 
 import type {
   CourseDefinition,
   CourseOverviewView,
-  CourseSectionStatus,
   CourseSectionView,
-  CourseStepDefinition,
-  CourseStepStatus,
   CourseStepView,
   UserCourseProgress,
 } from "../course.types";
 
-import {
-  isCourseStepCompleted,
-} from "./courseProgress.utils";
-
-const getStepStatus = (
-  step: CourseStepDefinition,
-  currentStepId: string | null,
-  progress: UserCourseProgress,
-): CourseStepStatus => {
-  if (
-    isCourseStepCompleted(
-      progress,
-      step,
-    )
-  ) {
-    return "completed";
-  }
-
-  if (
-    step.id === currentStepId
-  ) {
-    return "current";
-  }
-
-  return "locked";
-};
-
-const getSectionStatus = (
-  steps:
-    readonly CourseStepView[],
-): CourseSectionStatus => {
-  const finalTest =
-    steps.find(
-      (step) =>
-        step.type ===
-        "final-test",
-    );
-
-  if (
-    finalTest?.status ===
-    "completed"
-  ) {
-    return "completed";
-  }
-
-  if (
-    steps.some(
-      (step) =>
-        step.status ===
-        "current",
-    )
-  ) {
-    return "current";
-  }
-
-  return "locked";
-};
-
+/**
+ * Presentation adapter only.
+ *
+ * Course availability, current/completed/locked
+ * statuses, progress counts and Case Study unlock
+ * state are already decided by the backend.
+ *
+ * This function only combines those canonical
+ * journey values with the static presentation
+ * metadata in courseDefinition.
+ */
 export const buildCourseOverview = (
   definition: CourseDefinition,
   progress: UserCourseProgress,
 ): CourseOverviewView => {
-  const allSteps =
-    definition.sections.flatMap(
-      (section) =>
-        section.steps,
+  const stepProgressById =
+    new Map(
+      progress.steps.map(
+        (step) => [
+          step.stepId,
+          step,
+        ],
+      ),
     );
 
-  const currentStepDefinition =
-    allSteps.find(
-      (step) =>
-        !isCourseStepCompleted(
-          progress,
-          step,
-        ),
-    ) ?? null;
-
-  const currentStepId =
-    currentStepDefinition?.id ??
-    null;
+  const sectionProgressById =
+    new Map(
+      progress.sections.map(
+        (section) => [
+          section.sectionId,
+          section,
+        ],
+      ),
+    );
 
   const sections:
     CourseSectionView[] =
-    definition.sections.map(
-      (section) => {
-        const steps:
-          CourseStepView[] =
-          section.steps.map(
-            (step) => ({
-              ...step,
+      definition.sections.map(
+        (section) => {
+          const backendSection =
+            sectionProgressById.get(
+              section.id,
+            );
 
-              status:
-                getStepStatus(
-                  step,
-                  currentStepId,
-                  progress,
-                ),
-            }),
-          );
+          const status =
+            backendSection?.status ??
+            "locked";
 
-        const status =
-          getSectionStatus(steps);
+          const steps:
+            CourseStepView[] =
+              section.steps.map(
+                (step) => ({
+                  ...step,
 
-        return {
-          ...section,
-          status,
+                  status:
+                    stepProgressById
+                      .get(step.id)
+                      ?.status ??
+                    "locked",
+                }),
+              );
 
-          achievementUnlocked:
-            status ===
-            "completed",
+          return {
+            ...section,
 
-          steps,
-        };
-      },
-    );
+            status,
 
-  const completedSteps =
-    allSteps.filter(
-      (step) =>
-        isCourseStepCompleted(
-          progress,
-          step,
-        ),
-    ).length;
+            achievementUnlocked:
+              status ===
+              "completed",
 
-  const totalSteps =
-    allSteps.length;
-
-  const progressPercentage =
-    totalSteps === 0
-      ? 0
-      : Math.round(
-          (
-            completedSteps /
-            totalSteps
-          ) * 100,
-        );
-
-  const completedSections =
-    sections.filter(
-      (section) =>
-        section.status ===
-        "completed",
-    ).length;
-
-  const currentSection =
-    sections.find(
-      (section) =>
-        section.status ===
-        "current",
-    ) ?? null;
+            steps,
+          };
+        },
+      );
 
   const currentStep =
-    currentSection?.steps.find(
-      (step) =>
-        step.status ===
-        "current",
-    ) ?? null;
+    progress.currentStepId
+      ? (
+          sections
+            .flatMap(
+              (section) =>
+                section.steps,
+            )
+            .find(
+              (step) =>
+                step.id ===
+                progress.currentStepId,
+            ) ??
+          null
+        )
+      : null;
 
-  const isCaseStudyUnlocked =
-    sections.length > 0 &&
-    completedSections ===
-      sections.length;
+  const currentSectionId =
+    currentStep?.sectionId ??
+    null;
 
   return {
     id: definition.id,
@@ -181,22 +111,27 @@ export const buildCourseOverview = (
     subtitle:
       definition.subtitle,
 
-    progressPercentage,
-    completedSteps,
-    totalSteps,
+    progressPercentage:
+      progress.progressPercentage,
 
-    completedSections,
+    completedSteps:
+      progress.completedSteps,
+
+    totalSteps:
+      progress.totalSteps,
+
+    completedSections:
+      progress.completedSections,
+
     totalSections:
-      sections.length,
+      progress.totalSections,
 
-    currentSectionId:
-      currentSection?.id ??
-      null,
-
+    currentSectionId,
     currentStep,
 
     sections,
 
-    isCaseStudyUnlocked,
+    isCaseStudyUnlocked:
+      progress.isCaseStudyUnlocked,
   };
 };

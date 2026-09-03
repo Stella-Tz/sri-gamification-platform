@@ -1,8 +1,17 @@
 // client/src/features/caseStudy/progress/caseStudyProgress.presentation.ts
 
+import {
+  CASE_STUDY_ROUTES,
+} from "../../../constants/routes";
+
 import type {
   CaseStudyJourneyStatus,
+  CaseStudyRouteStage,
 } from "./caseStudyProgress.types";
+
+// -----------------------------------------------------------------------------
+// Progress presentation
+// -----------------------------------------------------------------------------
 
 export type CaseStudyProgressTone =
   | "available"
@@ -17,77 +26,117 @@ export type CaseStudyProgressPresentation = {
 
 const presentationByStatus = {
   "not-started": {
-    badgeLabel: "Available",
+    badgeLabel:
+      "Available",
+
     stageLabel:
       "Building Information",
-    tone: "available",
+
+    tone:
+      "available",
   },
 
   "setup-in-progress": {
-    badgeLabel: "In Progress",
+    badgeLabel:
+      "In Progress",
+
     stageLabel:
       "Building Information",
-    tone: "active",
+
+    tone:
+      "active",
   },
 
   "assessment-not-started": {
-    badgeLabel: "In Progress",
+    badgeLabel:
+      "In Progress",
+
     stageLabel:
       "Service Assessment",
-    tone: "active",
+
+    tone:
+      "active",
   },
 
   "assessment-in-progress": {
-    badgeLabel: "In Progress",
+    badgeLabel:
+      "In Progress",
+
     stageLabel:
       "Service Assessment",
-    tone: "active",
+
+    tone:
+      "active",
   },
 
   "results-investigation-not-started":
     {
-      badgeLabel: "In Progress",
+      badgeLabel:
+        "In Progress",
+
       stageLabel:
         "Results Investigation",
-      tone: "active",
+
+      tone:
+        "active",
     },
 
   "results-investigation-in-progress":
     {
-      badgeLabel: "In Progress",
+      badgeLabel:
+        "In Progress",
+
       stageLabel:
         "Results Investigation",
-      tone: "active",
+
+      tone:
+        "active",
     },
 
   "improvement-analysis-not-started":
     {
-      badgeLabel: "In Progress",
+      badgeLabel:
+        "In Progress",
+
       stageLabel:
         "Guided Improvement Analysis",
-      tone: "active",
+
+      tone:
+        "active",
     },
 
   "improvement-analysis-in-progress":
     {
-      badgeLabel: "In Progress",
+      badgeLabel:
+        "In Progress",
+
       stageLabel:
         "Guided Improvement Analysis",
-      tone: "active",
+
+      tone:
+        "active",
     },
 
   "simulation-ready": {
-    badgeLabel: "In Progress",
+    badgeLabel:
+      "In Progress",
+
     stageLabel:
       "Simulation",
-    tone: "active",
+
+    tone:
+      "active",
   },
 
   completed: {
-    badgeLabel: "Completed",
+    badgeLabel:
+      "Completed",
+
     stageLabel:
       "Comparison & Interpretation",
-    tone: "completed",
+
+    tone:
+      "completed",
   },
 } as const satisfies Record<
   CaseStudyJourneyStatus,
@@ -102,4 +151,159 @@ export const getCaseStudyProgressPresentation =
     return presentationByStatus[
       status
     ];
+  };
+
+// -----------------------------------------------------------------------------
+// Route presentation
+// -----------------------------------------------------------------------------
+
+export const getCaseStudyStagePath =
+  (
+    stage:
+      CaseStudyRouteStage,
+  ): string => {
+    switch (stage) {
+      case "setup":
+        return (
+          CASE_STUDY_ROUTES.setup
+        );
+
+      case "assessment":
+        return (
+          CASE_STUDY_ROUTES
+            .assessment
+        );
+
+      case "results":
+        return (
+          CASE_STUDY_ROUTES
+            .results
+        );
+
+      case "guided-improvement-analysis":
+        return (
+          CASE_STUDY_ROUTES
+            .guidedImprovementAnalysis
+        );
+
+      case "simulation-results":
+        return (
+          CASE_STUDY_ROUTES
+            .simulationResults
+        );
+    }
+  };
+
+// -----------------------------------------------------------------------------
+// Primary action presentation
+// -----------------------------------------------------------------------------
+
+export type CaseStudyPrimaryActionPresentation =
+  {
+    label: string;
+    path: string;
+  };
+
+export const getCaseStudyPrimaryActionPresentation =
+  ({
+    status,
+    nextStage,
+    isPracticeAttempt,
+  }: {
+    status:
+      CaseStudyJourneyStatus;
+
+    nextStage:
+      CaseStudyRouteStage;
+
+    isPracticeAttempt:
+      boolean;
+  }): CaseStudyPrimaryActionPresentation => {
+    let label: string;
+
+    switch (status) {
+      case "not-started":
+        label =
+          isPracticeAttempt
+            ? "Start Practice"
+            : "Start Case Study";
+        break;
+
+      case "setup-in-progress":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Continue Setup";
+        break;
+
+      case "assessment-not-started":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Start Assessment";
+        break;
+
+      case "assessment-in-progress":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Continue Assessment";
+        break;
+
+      case "results-investigation-not-started":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Start Results Investigation";
+        break;
+
+      case "results-investigation-in-progress":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Continue Results Investigation";
+        break;
+
+      case "improvement-analysis-not-started":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Start Guided Improvement Analysis";
+        break;
+
+      case "improvement-analysis-in-progress":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Continue Guided Improvement Analysis";
+        break;
+
+      case "simulation-ready":
+        label =
+          isPracticeAttempt
+            ? "Resume Practice"
+            : "Continue to Simulation";
+        break;
+
+      case "completed":
+        label =
+          "View Simulation Results";
+        break;
+    }
+
+    return {
+      label,
+
+      /*
+       * The backend has already decided
+       * which stage comes next.
+       *
+       * The frontend only converts that
+       * stage into a React route.
+       */
+      path:
+        getCaseStudyStagePath(
+          nextStage,
+        ),
+    };
   };

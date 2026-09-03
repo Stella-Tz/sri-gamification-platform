@@ -6,13 +6,16 @@ import { domainIcons } from "../../data/domainIcons";
 import { sriImpactCriterionNames } from "../../data/sriOfficialConstants";
 
 import type {
-  CaseStudySubmitResult,
   ImpactCriterionName,
   TechnicalDomainName,
 } from "../../types/caseStudy.types";
 
+import type {
+  CaseStudyResultsPublicResult,
+} from "../../results/caseStudyResults.types";
+
 type ResultsScoreMatrixProps = {
-  result: CaseStudySubmitResult;
+  result: CaseStudyResultsPublicResult;
 };
 
 type LegendTone =
@@ -237,7 +240,7 @@ const ResultsScoreMatrix = ({
 };
 
 const buildMatrixRows = (
-  result: CaseStudySubmitResult,
+  result: CaseStudyResultsPublicResult,
   includedDomains:
     readonly TechnicalDomainName[],
 ): MatrixRow[] | null => {

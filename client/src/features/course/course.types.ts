@@ -1,5 +1,3 @@
-// client/src/features/course/course.types.ts
-
 import type {
   TheoryLessonId,
   TheorySectionId,
@@ -123,7 +121,6 @@ export type CourseSectionView =
     "steps"
   > & {
     status: CourseSectionStatus;
-
     achievementUnlocked: boolean;
 
     steps:
@@ -136,6 +133,7 @@ export type CourseOverviewView = {
   subtitle: string;
 
   progressPercentage: number;
+
   completedSteps: number;
   totalSteps: number;
 
@@ -164,6 +162,7 @@ export type CourseQuestionOption = {
 export type CourseQuestion = {
   id: string;
   prompt: string;
+
   options:
     readonly CourseQuestionOption[];
 };
@@ -179,7 +178,6 @@ export type FinalTestFeedback =
   | "empty"
   | "correct"
   | "incorrect";
-
 
 export type FinalTestAttempt = {
   id: string;
@@ -197,7 +195,41 @@ export type FinalTestAttempt = {
   completedAt: string;
 };
 
+export type CourseStepProgress = {
+  stepId:
+    CourseStepDefinition["id"];
+
+  sectionId:
+    TheorySectionId;
+
+  type:
+    CourseStepType;
+
+  status:
+    CourseStepStatus;
+};
+
+export type CourseSectionProgress = {
+  sectionId:
+    TheorySectionId;
+
+  status:
+    CourseSectionStatus;
+
+  completedSteps: number;
+  totalSteps: number;
+};
+
 export type UserCourseProgress = {
+  /*
+   * Historical completion collections are still
+   * exposed because lesson/final-test UI and the
+   * Dashboard currently use them.
+   *
+   * Course journey decisions below are canonical
+   * backend output and must not be re-derived in
+   * the frontend.
+   */
   completedLessonIds:
     readonly TheoryLessonId[];
 
@@ -206,4 +238,115 @@ export type UserCourseProgress = {
 
   finalTestAttempts:
     readonly FinalTestAttempt[];
+
+  currentStepId:
+    | CourseStepDefinition["id"]
+    | null;
+
+  steps:
+    readonly CourseStepProgress[];
+
+  sections:
+    readonly CourseSectionProgress[];
+
+  completedSteps: number;
+  totalSteps: number;
+
+  completedSections: number;
+  totalSections: number;
+
+  progressPercentage: number;
+
+  isCourseCompleted: boolean;
+  isCaseStudyUnlocked: boolean;
+};
+
+// -----------------------------------------------------------------------------
+// Lesson quiz backend data
+// -----------------------------------------------------------------------------
+
+export type LessonQuizData = {
+  quizId: string;
+  sectionId: string;
+  lessonId: string;
+
+  questions:
+    CourseQuestion[];
+};
+
+export type LessonQuizAnswerResult = {
+  questionId: string;
+
+  correct: boolean;
+
+  correctOptionId: string;
+
+  explanation: string;
+};
+
+export type LessonQuizCompletionAnswer = {
+  questionId: string;
+
+  selectedOptionId: string;
+};
+
+// -----------------------------------------------------------------------------
+// Final test backend data
+// -----------------------------------------------------------------------------
+
+export type FinalTestState = {
+  attemptId: string;
+
+  finalTestId: string;
+
+  sectionId: string;
+
+  status:
+    | "in-progress"
+    | "passed"
+    | "failed";
+
+  allowedMistakes: number;
+
+  remainingMistakes: number;
+
+  correctCount: number;
+
+  wrongCount: number;
+
+  answeredCount: number;
+
+  totalQuestions: number;
+
+  accuracyPercentage: number;
+
+  scorePercentage: number;
+
+  currentQuestionNumber: number;
+
+  currentQuestion:
+    | CourseQuestion
+    | null;
+
+  completedAt:
+    | string
+    | null;
+};
+
+export type FinalTestAnswerResult = {
+  questionId: string;
+
+  correct: boolean;
+
+  attempt:
+    FinalTestState;
+};
+
+export type FinalTestAnswerSubmission = {
+  result:
+    FinalTestAnswerResult;
+
+  progress:
+    | UserCourseProgress
+    | null;
 };

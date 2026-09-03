@@ -1,3 +1,5 @@
+//client\src\app\providers\AuthProvider.tsx
+
 import {
   createContext,
   useContext,
@@ -8,12 +10,9 @@ import {
 } from "react";
 import { apiClient } from "../../api/apiClient";
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-};
+import type {
+  AuthUser,
+} from "../../types/auth.types";
 
 type LoginInput = {
   email: string;

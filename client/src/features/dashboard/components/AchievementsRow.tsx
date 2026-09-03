@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import Card from "../../../components/ui/Card";
+
 import {
   fadeUp,
   staggerContainer,
@@ -34,10 +35,13 @@ type AchievementsRowProps = {
 const getAchievementTitleLines = (
   title: string,
 ): readonly string[] => {
-  const specialistSuffix = " Specialist";
+  const specialistSuffix =
+    " Specialist";
 
   if (
-    title.endsWith(specialistSuffix) &&
+    title.endsWith(
+      specialistSuffix,
+    ) &&
     title.length >= 25
   ) {
     return [
@@ -65,11 +69,28 @@ const AchievementsRow = ({
       null,
     );
 
-  const [canScrollLeft, setCanScrollLeft] =
-    useState(false);
+  const [
+    canScrollLeft,
+    setCanScrollLeft,
+  ] = useState(false);
 
-  const [canScrollRight, setCanScrollRight] =
-    useState(false);
+  const [
+    canScrollRight,
+    setCanScrollRight,
+  ] = useState(false);
+
+  /*
+   * Achievements remain visually hidden
+   * until their initial horizontal position
+   * has been calculated.
+   *
+   * After that, the normal staggered
+   * animation begins.
+   */
+  const [
+    startAchievementsAnimation,
+    setStartAchievementsAnimation,
+  ] = useState(false);
 
   const unlockedCount =
     achievements.filter(
@@ -128,12 +149,15 @@ const AchievementsRow = ({
     }, []);
 
   /*
-   * When the Dashboard opens, reveal the most
-   * recently unlocked achievement immediately.
+   * Place the achievement row immediately
+   * at its final horizontal position before
+   * the browser paints the achievements.
    *
-   * Because the Case Study achievement is the
-   * final item, completing the Case Study will
-   * automatically focus that achievement.
+   * The user therefore does not see the
+   * automatic focus movement.
+   *
+   * Once the position is ready, the
+   * staggered fade-up animation starts.
    */
   useLayoutEffect(() => {
     const container =
@@ -148,41 +172,63 @@ const AchievementsRow = ({
       !latestUnlockedRef.current
     ) {
       container.scrollLeft = 0;
-      updateScrollButtons();
-      return;
+    } else {
+      const achievement =
+        latestUnlockedRef.current;
+
+      const targetScrollLeft =
+        achievement.offsetLeft -
+        container.clientWidth / 2 +
+        achievement.offsetWidth / 2;
+
+      const maximumScrollLeft =
+        Math.max(
+          0,
+          container.scrollWidth -
+            container.clientWidth,
+        );
+
+      container.scrollLeft =
+        Math.max(
+          0,
+          Math.min(
+            targetScrollLeft,
+            maximumScrollLeft,
+          ),
+        );
     }
 
-    const achievement =
-      latestUnlockedRef.current;
-
-    const targetScrollLeft =
-      achievement.offsetLeft -
-      container.clientWidth / 2 +
-      achievement.offsetWidth / 2;
-
-    const maximumScrollLeft =
-      Math.max(
-        0,
-        container.scrollWidth -
-          container.clientWidth,
-      );
-
-    container.scrollLeft =
-      Math.max(
-        0,
-        Math.min(
-          targetScrollLeft,
-          maximumScrollLeft,
-        ),
-      );
-
     updateScrollButtons();
+
+    /*
+     * Wait until the initial scroll position
+     * has been committed, then reveal the row
+     * through the existing stagger animation.
+     */
+    const animationFrame =
+      window.requestAnimationFrame(
+        () => {
+          setStartAchievementsAnimation(
+            true,
+          );
+        },
+      );
+
+    return () => {
+      window.cancelAnimationFrame(
+        animationFrame,
+      );
+    };
   }, [
     achievements.length,
     latestUnlockedIndex,
     updateScrollButtons,
   ]);
 
+  /*
+   * Keep the navigation arrows in sync
+   * with manual scrolling and resizing.
+   */
   useLayoutEffect(() => {
     const container =
       scrollContainerRef.current;
@@ -225,7 +271,9 @@ const AchievementsRow = ({
   }, [updateScrollButtons]);
 
   const scrollAchievements = (
-    direction: "left" | "right",
+    direction:
+      | "left"
+      | "right",
   ) => {
     const container =
       scrollContainerRef.current;
@@ -235,13 +283,15 @@ const AchievementsRow = ({
     }
 
     const scrollDistance =
-      container.clientWidth * 0.5;
+      container.clientWidth *
+      0.5;
 
     container.scrollBy({
       left:
         direction === "right"
           ? scrollDistance
           : -scrollDistance,
+
       behavior: "smooth",
     });
   };
@@ -259,13 +309,17 @@ const AchievementsRow = ({
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Pass each theory section final test and complete the practical case study to unlock all achievements.
+            Pass each theory section
+            final test and complete the
+            practical case study to
+            unlock all achievements.
           </p>
         </div>
 
         <span className="w-fit shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
           {unlockedCount}/
-          {achievements.length} unlocked
+          {achievements.length}{" "}
+          unlocked
         </span>
       </div>
 
@@ -277,7 +331,9 @@ const AchievementsRow = ({
               "left",
             )
           }
-          disabled={!canScrollLeft}
+          disabled={
+            !canScrollLeft
+          }
           aria-label="Show previous achievements"
           className="mt-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-25 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600 sm:mt-[18px] sm:h-11 sm:w-11"
         >
@@ -289,16 +345,18 @@ const AchievementsRow = ({
 
         <div
           ref={scrollContainerRef}
-          className="relative min-w-0 overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="relative min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <motion.div
-            variants={staggerContainer}
+            variants={
+              staggerContainer
+            }
             initial="hidden"
-            whileInView="visible"
-            viewport={{
-              once: true,
-              amount: 0.15,
-            }}
+            animate={
+              startAchievementsAnimation
+                ? "visible"
+                : "hidden"
+            }
             className="flex min-w-0 gap-5 py-3"
           >
             {achievements.map(
@@ -327,25 +385,43 @@ const AchievementsRow = ({
 
                 return (
                   <motion.div
-                    key={achievement.id}
+                    key={
+                      achievement.id
+                    }
                     ref={
                       isLatestUnlocked
                         ? latestUnlockedRef
                         : null
                     }
-                    variants={fadeUp}
+                    variants={
+                      fadeUp
+                    }
                     className="relative flex w-[calc((100%-1.25rem)/2)] shrink-0 flex-col items-center text-center sm:w-[calc((100%-2.5rem)/3)] md:w-[calc((100%-3.75rem)/4)] lg:w-[calc((100%-5rem)/5)] xl:w-[calc((100%-6.25rem)/6)]"
                   >
                     <div
-                      className={`flex h-14 w-14 items-center justify-center rounded-full border transition-all duration-200 ${
-                        isUnlocked
-                          ? "border-amber-200 bg-amber-50 text-amber-500"
-                          : "border-slate-200 bg-slate-100 text-slate-400"
-                      } ${
-                        isLatestUnlocked
-                          ? "ring-4 ring-amber-100"
-                          : ""
-                      }`}
+                      className={`
+                        flex
+                        h-14
+                        w-14
+                        items-center
+                        justify-center
+                        rounded-full
+                        border
+                        transition-all
+                        duration-200
+
+                        ${
+                          isUnlocked
+                            ? "border-amber-200 bg-amber-50 text-amber-500"
+                            : "border-slate-200 bg-slate-100 text-slate-400"
+                        }
+
+                        ${
+                          isLatestUnlocked
+                            ? "ring-4 ring-amber-100"
+                            : ""
+                        }
+                      `}
                     >
                       <Icon
                         className="h-5 w-5"
@@ -354,16 +430,27 @@ const AchievementsRow = ({
                     </div>
 
                     <p
-                      className={`mt-3 min-h-10 max-w-[190px] text-xs font-semibold leading-4 ${
-                        isUnlocked
-                          ? "text-slate-700"
-                          : "text-slate-400"
-                      }`}
+                      className={`
+                        mt-3
+                        min-h-10
+                        max-w-[190px]
+                        text-xs
+                        font-semibold
+                        leading-4
+
+                        ${
+                          isUnlocked
+                            ? "text-slate-700"
+                            : "text-slate-400"
+                        }
+                      `}
                     >
                       {titleLines.map(
                         (line) => (
                           <span
-                            key={line}
+                            key={
+                              line
+                            }
                             className="block"
                           >
                             {line}
@@ -393,7 +480,9 @@ const AchievementsRow = ({
               "right",
             )
           }
-          disabled={!canScrollRight}
+          disabled={
+            !canScrollRight
+          }
           aria-label="Show next achievements"
           className="mt-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-25 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600 sm:mt-[18px] sm:h-11 sm:w-11"
         >

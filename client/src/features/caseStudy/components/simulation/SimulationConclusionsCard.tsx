@@ -17,12 +17,15 @@ import {
 } from "../../data/sriOfficialConstants";
 
 import type {
+  CaseStudySimulationResult,
+} from "../../simulation/caseStudySimulation.types";
+
+import type {
   ImpactCriterionName,
-  SimulationResult,
 } from "../../types/caseStudy.types";
 
 type SimulationConclusionsCardProps = {
-  result: SimulationResult;
+  result: CaseStudySimulationResult;
 };
 
 const SIMULATION_EPSILON = 1e-9;
@@ -232,7 +235,7 @@ const SimulationConclusionsCard = ({
 };
 
 const resolveSimulationConclusionData = (
-  result: SimulationResult,
+  result: CaseStudySimulationResult,
 ): SimulationConclusionData | null => {
   const beforeTotalScore =
     result.before.totalScore;

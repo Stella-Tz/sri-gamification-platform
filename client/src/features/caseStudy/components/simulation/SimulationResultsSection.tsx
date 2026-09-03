@@ -1,4 +1,4 @@
-// client/src/features/caseStudy/components/simulation/SimulationResultsSection.tsx
+// client/src/features/caseStudy/components/simulation/CaseStudySimulationResultsSection.tsx
 
 import {
   AlertCircle,
@@ -14,11 +14,11 @@ import SriComparisonScoreCard from "../shared/SriComparisonScoreCard";
 import resultsComparisonImage from "../../../../assets/caseStudy/results_comparison.png";
 
 import type {
-  SimulationResult,
-} from "../../types/caseStudy.types";
+  CaseStudySimulationResult,
+} from "../../simulation/caseStudySimulation.types";
 
-type SimulationResultsSectionProps = {
-  result: SimulationResult;
+type CaseStudySimulationResultsSectionProps = {
+  result: CaseStudySimulationResult;
 };
 
 type OverallScoreComparison = {
@@ -29,9 +29,9 @@ type OverallScoreComparison = {
 
 const SIMULATION_EPSILON = 1e-9;
 
-const SimulationResultsSection = ({
+const CaseStudySimulationResultsSection = ({
   result,
-}: SimulationResultsSectionProps) => {
+}: CaseStudySimulationResultsSectionProps) => {
   const scoreComparison =
     resolveOverallScoreComparison(
       result,
@@ -87,14 +87,14 @@ const SimulationResultsSection = ({
 
         </>
       ) : (
-        <SimulationResultsErrorState />
+        <CaseStudySimulationResultsErrorState />
       )}
     </section>
   );
 };
 
 type OverallScoreComparisonCardProps = {
-  result: SimulationResult;
+  result: CaseStudySimulationResult;
   comparison: OverallScoreComparison;
 };
 
@@ -246,7 +246,7 @@ const ChangeMetric = ({
 };
 
 const resolveOverallScoreComparison = (
-  result: SimulationResult,
+  result: CaseStudySimulationResult,
 ): OverallScoreComparison | null => {
   const beforeScore =
     result.before.totalScore;
@@ -305,7 +305,7 @@ const normalizeDisplayedDelta = (
   );
 };
 
-const SimulationResultsErrorState = () => {
+const CaseStudySimulationResultsErrorState = () => {
   return (
     <section
       role="alert"
@@ -335,4 +335,4 @@ const SimulationResultsErrorState = () => {
   );
 };
 
-export default SimulationResultsSection;
+export default CaseStudySimulationResultsSection;

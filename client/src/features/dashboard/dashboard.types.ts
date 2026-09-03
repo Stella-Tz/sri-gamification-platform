@@ -2,15 +2,56 @@
 
 import type {
   AuthUser,
-} from "../../app/providers/AuthProvider";
-
-import type {
-  SimulationResult,
-} from "../caseStudy/types/caseStudy.types";
+} from "../../types/auth.types";
 
 import type {
   CourseAchievement,
 } from "../course/course.types";
+
+import type {
+  CaseStudyProgress,
+} from "../caseStudy/progress/caseStudyProgress.types";
+
+import type {
+  CaseStudyResultsPublicResult,
+} from "../caseStudy/results/caseStudyResults.types";
+
+import type {
+  CaseStudySimulationResult,
+} from "../caseStudy/simulation/caseStudySimulation.types";
+
+import type {
+  UserCourseProgress,
+} from "../course/course.types";
+
+export type DashboardDataDto = {
+  user:
+    AuthUser;
+
+  courseProgress:
+    UserCourseProgress;
+
+  caseStudy: {
+    id:
+      | string
+      | null;
+
+    title:
+      | string
+      | null;
+
+    progress:
+      CaseStudyProgress;
+
+    activeBaselineResult:
+      | CaseStudyResultsPublicResult
+      | null;
+
+    officialSimulationResult:
+      | CaseStudySimulationResult
+      | null;
+  };
+};
 
 export type AchievementStatus =
   | "unlocked"
@@ -21,7 +62,7 @@ export type JourneyStepStatus =
   | "current"
   | "locked";
 
-/*
+/**
  * State of the current Case Study attempt.
  * This exists for navigation / Next Action only.
  */
@@ -42,37 +83,55 @@ export type NextActionState =
 
 export type DashboardAchievement =
   CourseAchievement & {
-    status: AchievementStatus;
+    status:
+      AchievementStatus;
   };
 
 export type JourneyStep = {
   id: string;
+
   type:
     | "theory-section"
     | "case-study";
+
   title: string;
   order: number;
-  status: JourneyStepStatus;
+
+  status:
+    JourneyStepStatus;
 };
 
 export type AssessmentProgressItem = {
   sectionId: string;
   sectionTitle: string;
-  score: number | null;
-  passed: boolean | null;
-  attemptCount: number;
+
+  score:
+    | number
+    | null;
+
+  passed:
+    | boolean
+    | null;
+
+  attemptCount:
+    number;
 };
 
 export type DashboardLearningMilestone = {
   title: string;
-  progressPercentage: number;
+
+  progressPercentage:
+    number;
 };
 
 export type DashboardNextAction = {
-  state: NextActionState;
-  path: string;
+  state:
+    NextActionState;
 
-  /*
+  path:
+    string;
+
+  /**
    * Present only while the learner is working
    * through the theory Course. It represents the
    * overall Course percentage that will be reached
@@ -83,7 +142,7 @@ export type DashboardNextAction = {
     | null;
 };
 
-/*
+/**
  * The Case Study summary card is intentionally
  * independent from Practice Again.
  *
@@ -99,37 +158,69 @@ export type CaseStudySummaryState =
 
 export type DashboardKeyFunctionalityScore = {
   label: string;
-  score: number | null;
+
+  score:
+    | number
+    | null;
 };
 
 export type DashboardBaselineResultSummary = {
-  totalScore: number;
-  sriClass: string;
+  totalScore:
+    number;
+
+  sriClass:
+    string;
+
   keyFunctionalityScores:
     DashboardKeyFunctionalityScore[];
 };
 
 export type DashboardSimulationResultSummary = {
-  beforeScore: number;
-  beforeClass: string;
-  afterScore: number;
-  afterClass: string;
-  delta: number;
+  beforeScore:
+    number;
 
-  upgradedServiceCode: string;
-  upgradedServiceTitle: string;
+  beforeClass:
+    string;
+
+  afterScore:
+    number;
+
+  afterClass:
+    string;
+
+  delta:
+    number;
+
+  upgradedServiceCode:
+    string;
+
+  upgradedServiceTitle:
+    string;
 };
 
 export type DashboardCaseStudySummary = {
-  state: CaseStudySummaryState;
+  state:
+    CaseStudySummaryState;
 
-  caseStudyId: string | null;
-  caseStudyTitle: string | null;
+  caseStudyId:
+    | string
+    | null;
 
-  completedCourseSteps: number;
-  totalCourseSteps: number;
-  remainingCourseSteps: number;
-  courseProgressPercentage: number;
+  caseStudyTitle:
+    | string
+    | null;
+
+  completedCourseSteps:
+    number;
+
+  totalCourseSteps:
+    number;
+
+  remainingCourseSteps:
+    number;
+
+  courseProgressPercentage:
+    number;
 
   baselineResult:
     | DashboardBaselineResultSummary
@@ -139,19 +230,14 @@ export type DashboardCaseStudySummary = {
     | DashboardSimulationResultSummary
     | null;
 
-  completionAt: string | null;
-
-  /*
-   * Used only when opening the permanent official
-   * Simulation Results page from the Dashboard.
-   */
-  officialSimulationResult:
-    | SimulationResult
+  completionAt:
+    | string
     | null;
 };
 
 export type DashboardViewModel = {
-  user: AuthUser;
+  user:
+    AuthUser;
 
   achievements:
     DashboardAchievement[];
@@ -163,9 +249,15 @@ export type DashboardViewModel = {
     AssessmentProgressItem[];
 
   theoryProgress: {
-    completedSections: number;
-    totalSections: number;
-    currentStepTitle: string | null;
+    completedSections:
+      number;
+
+    totalSections:
+      number;
+
+    currentStepTitle:
+      | string
+      | null;
 
     status:
       | "not-started"
@@ -174,23 +266,41 @@ export type DashboardViewModel = {
   };
 
   courseProgress: {
-    completedSteps: number;
-    totalSteps: number;
-    progressPercentage: number;
+    completedSteps:
+      number;
+
+    totalSteps:
+      number;
+
+    progressPercentage:
+      number;
   };
 
-  /*
+  /**
    * Current attempt state. Used by NextActionCard.
    */
   caseStudy: {
-    id: string | null;
-    title: string | null;
-    status: CaseStudyDashboardStatus;
-    currentStepLabel: string | null;
-    completionAt: string | null;
+    id:
+      | string
+      | null;
+
+    title:
+      | string
+      | null;
+
+    status:
+      CaseStudyDashboardStatus;
+
+    currentStepLabel:
+      | string
+      | null;
+
+    completionAt:
+      | string
+      | null;
   };
 
-  /*
+  /**
    * First official Case Study / permanent results.
    * Practice Again never changes this card once the
    * official Case Study has been completed.

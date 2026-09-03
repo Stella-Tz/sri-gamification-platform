@@ -553,8 +553,8 @@ model CaseStudyAttemptServiceAnswer {
   attemptId         String
   scenarioServiceId String
 
-  primaryLevelId    String
-  share             Float   @default(100)
+  primaryLevelId    String?
+  share             Float @default(100)
   additionalLevelId String?
 
   validated Boolean @default(false)
@@ -562,7 +562,7 @@ model CaseStudyAttemptServiceAnswer {
   attempt         CaseStudyAttempt         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   scenarioService CaseStudySelectedService @relation(fields: [scenarioServiceId], references: [id], onDelete: Restrict)
 
-  primaryLevel    SriFunctionalityLevel  @relation("SelectedPrimaryLevel", fields: [primaryLevelId], references: [id], onDelete: Restrict)
+  primaryLevel    SriFunctionalityLevel? @relation("SelectedPrimaryLevel", fields: [primaryLevelId], references: [id], onDelete: Restrict)
   additionalLevel SriFunctionalityLevel? @relation("SelectedAdditionalLevel", fields: [additionalLevelId], references: [id], onDelete: Restrict)
 
   @@unique([attemptId, scenarioServiceId])

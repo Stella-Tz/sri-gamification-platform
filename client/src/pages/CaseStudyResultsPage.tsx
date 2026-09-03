@@ -2,7 +2,6 @@
 
 import {
   useLayoutEffect,
-  useMemo,
   useRef,
   type ReactNode,
 } from "react";
@@ -12,10 +11,14 @@ import {
 } from "lucide-react";
 
 import {
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 
+import {
+  useCaseStudyResults,
+} from "../features/caseStudy/hooks/useCaseStudyResults";
+
+import PageState from "../components/ui/PageState";
 import PrimaryButton from "../components/ui/PrimaryButton";
 
 import {
@@ -34,98 +37,13 @@ import ResultsImpactScoresCard from "../features/caseStudy/components/results/Re
 import ResultsScoreMatrix from "../features/caseStudy/components/results/ResultsScoreMatrix";
 
 import {
-  caseStudyMockData,
-} from "../features/caseStudy/data/caseStudyMockData";
-
-import {
-  getSriServicesForAssessmentMethod,
-} from "../features/caseStudy/data/sriServiceCatalogue";
-
-import {
-  useCaseStudyProgress,
-} from "../features/caseStudy/progress/useCaseStudyProgress";
+  useCaseStudyProgress as useSharedCaseStudyProgress,
+} from "../app/providers/CaseStudyProgressProvider";
 
 import officeBuildingImage from "../assets/caseStudy/office-building3.png";
 
-import type {
-  BuildingType,
-  CaseStudyDetails,
-  CaseStudySubmitResult,
-  ClimateZone,
-  DomainPresence,
-  OfficialAssessmentMethod,
-  ServiceAnswer,
-  SriService,
-  TechnicalDomainName,
-} from "../features/caseStudy/types/caseStudy.types";
-
-import type {
-  CaseStudyResultsInvestigationProgress,
-} from "../features/caseStudy/progress/caseStudyProgress.types";
-
-type ResultsLocationState = {
-  result?: CaseStudySubmitResult;
-  caseStudy?: CaseStudyDetails;
-
-  answers?: Record<
-    string,
-    ServiceAnswer
-  >;
-
-  assessmentMethod?:
-    OfficialAssessmentMethod;
-
-  serviceApplicability?: Record<
-    string,
-    boolean
-  >;
-
-  domainPresence?: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  buildingType?: BuildingType;
-  climateZone?: ClimateZone;
-
-  services?: SriService[];
-};
-
-const createServiceApplicability = ({
-  services,
-  caseStudy,
-}: {
-  services: SriService[];
-  caseStudy: CaseStudyDetails;
-}): Record<string, boolean> => {
-  const applicableServiceIds =
-    new Set(
-      caseStudy.selectedServices.map(
-        (selectedService) =>
-          selectedService.serviceId,
-      ),
-    );
-
-  return services.reduce<
-    Record<string, boolean>
-  >(
-    (
-      accumulator,
-      service,
-    ) => {
-      accumulator[service.id] =
-        applicableServiceIds.has(
-          service.id,
-        );
-
-      return accumulator;
-    },
-    {},
-  );
-};
 
 const CaseStudyResultsPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const guidedInvestigationRef =
@@ -134,10 +52,24 @@ const CaseStudyResultsPage = () => {
     );
 
   const {
-    activeCaseStudy,
-    getProgressForCaseStudy,
-    saveResultsInvestigationProgress,
-  } = useCaseStudyProgress();
+    applyProgress,
+  } =
+    useSharedCaseStudyProgress();
+
+  const {
+    results:
+      serverResults,
+
+    isLoading,
+
+    error:
+      loadError,
+
+    checkAnswer,
+
+    advanceInvestigation,
+  } =
+    useCaseStudyResults();
 
   useLayoutEffect(() => {
     window.scrollTo({
@@ -145,148 +77,7 @@ const CaseStudyResultsPage = () => {
       left: 0,
       behavior: "auto",
     });
-  }, [location.key]);
-
-  const state =
-    location.state as
-      | ResultsLocationState
-      | null;
-
-  const activeCaseStudyDefinition =
-    activeCaseStudy
-      ? caseStudyMockData.find(
-          (candidate) =>
-            candidate.id ===
-            activeCaseStudy.caseStudyId,
-        ) ?? null
-      : null;
-
-  /*
-   * Route state is preferred during normal
-   * forward navigation.
-   *
-   * Persisted progress is used after refresh
-   * or direct navigation from the Dashboard.
-   */
-  const caseStudy =
-    state?.caseStudy ??
-    activeCaseStudyDefinition ??
-    caseStudyMockData[0] ??
-    null;
-
-  const savedProgress =
-    caseStudy
-      ? getProgressForCaseStudy(
-          caseStudy.id,
-        )
-      : null;
-
-  const savedSetup =
-    savedProgress?.setup ??
-    null;
-
-  const savedSetupAnswers =
-    savedSetup?.completed === true
-      ? savedSetup.answers
-      : null;
-
-  const result =
-    state?.result ??
-    savedProgress?.baselineResult ??
-    null;
-
-  const answers =
-    state?.answers ??
-    savedProgress
-      ?.assessment
-      ?.answers ??
-    null;
-
-  const assessmentMethod =
-    state?.assessmentMethod ??
-    savedSetupAnswers
-      ?.methodologySelection
-      .assessmentMethod ??
-    null;
-
-  const domainPresence =
-    state?.domainPresence ??
-    savedSetupAnswers
-      ?.domainPresence ??
-    null;
-
-  const buildingType =
-    state?.buildingType ??
-    savedSetupAnswers
-      ?.buildingInformation
-      .buildingType ??
-    null;
-
-  const climateZone =
-    state?.climateZone ??
-    savedSetupAnswers
-      ?.buildingInformation
-      .climateZone ??
-    null;
-
-  const services =
-    useMemo<SriService[] | null>(
-      () => {
-        if (state?.services) {
-          return state.services;
-        }
-
-        if (!assessmentMethod) {
-          return null;
-        }
-
-        return getSriServicesForAssessmentMethod(
-          assessmentMethod,
-        );
-      },
-      [
-        assessmentMethod,
-        state?.services,
-      ],
-    );
-
-  const serviceApplicability =
-    useMemo<
-      Record<string, boolean> | null
-    >(
-      () => {
-        if (
-          state?.serviceApplicability
-        ) {
-          return state
-            .serviceApplicability;
-        }
-
-        if (
-          !services ||
-          !caseStudy
-        ) {
-          return null;
-        }
-
-        return createServiceApplicability(
-          {
-            services,
-            caseStudy,
-          },
-        );
-      },
-      [
-        caseStudy,
-        services,
-        state?.serviceApplicability,
-      ],
-    );
-
-  const savedInvestigation =
-    savedProgress
-      ?.resultsInvestigation ??
-    null;
+  }, []);
 
   const scrollToGuidedInvestigation =
     () => {
@@ -297,47 +88,55 @@ const CaseStudyResultsPage = () => {
         });
     };
 
-  const handleInvestigationProgressChange =
-    (
-      investigation:
-        CaseStudyResultsInvestigationProgress,
-    ) => {
-      if (!caseStudy) {
-        return;
-      }
+  /*
+   * Keep the shared backend journey progress synchronized
+   * with Results Investigation before the user navigates to
+   * Guided Improvement.
+   *
+   * `response.progress` belongs only to the Results
+   * Investigation questions. `response.caseStudyProgress`
+   * is the canonical journey state used by RouteGuard.
+   */
+  const handleAdvanceInvestigation =
+    async () => {
+      const response =
+        await advanceInvestigation();
 
-      saveResultsInvestigationProgress(
-        caseStudy.id,
-        investigation,
+      applyProgress(
+        response.caseStudyProgress,
       );
+
+      return response;
     };
 
-  if (!caseStudy) {
+  if (
+    isLoading &&
+    !serverResults
+  ) {
     return (
       <ResultsPageLayout>
-        <ResultsErrorState
-          title="Case Study Not Found"
-          description="The requested case study could not be found. Return to the case-study library and select an available case study."
-          primaryAction={{
-            label:
-              "Back to Case Study",
-
-            onClick: () =>
-              navigate(
-                ROUTES.caseStudy,
-              ),
-          }}
-        />
+        <PageState
+          isLoading={true}
+          error={null}
+        >
+          <div />
+        </PageState>
       </ResultsPageLayout>
     );
   }
 
-  if (!result) {
+  if (
+    loadError ||
+    !serverResults
+  ) {
     return (
       <ResultsPageLayout>
         <ResultsErrorState
           title="Assessment Result Unavailable"
-          description="No calculated assessment result is available. Complete the service assessment before opening the results page."
+          description={
+            loadError ??
+            "No calculated assessment result is available. Complete the service assessment before opening the results page."
+          }
           primaryAction={{
             label:
               "Back to Assessment",
@@ -361,47 +160,9 @@ const CaseStudyResultsPage = () => {
     );
   }
 
-  const guidedImprovementNavigationState =
-    (() => {
-      /*
-      * Values restored from SetupAnswers may
-      * contain an empty string before the setup
-      * has been completed.
-      *
-      * These checks also narrow the corresponding
-      * TypeScript unions to their official types.
-      */
-      if (
-        answers === null ||
-        !assessmentMethod ||
-        serviceApplicability === null ||
-        domainPresence === null ||
-        !buildingType ||
-        !climateZone ||
-        services === null
-      ) {
-        return undefined;
-      }
+  const result =
+    serverResults.result;
 
-      return {
-        result,
-        caseStudy,
-
-        answers,
-
-        assessmentMethod,
-
-        serviceApplicability,
-
-        domainPresence,
-
-        buildingType,
-
-        climateZone,
-
-        services,
-      };
-    })();
 
   return (
     <ResultsPageLayout>
@@ -409,7 +170,9 @@ const CaseStudyResultsPage = () => {
         <ResultsPageHeader />
 
         <ResultsHeroCard
-          result={result}
+          result={
+            result
+          }
         />
 
         <div className="grid min-w-0 max-w-full items-stretch gap-6 lg:grid-cols-[390px_minmax(0,1fr)]">
@@ -435,15 +198,21 @@ const CaseStudyResultsPage = () => {
         </div>
 
         <ResultsImpactScoresCard
-          result={result}
+          result={
+            result
+          }
         />
 
         <ResultsDomainScoresCard
-          result={result}
+          result={
+            result
+          }
         />
 
         <ResultsScoreMatrix
-          result={result}
+          result={
+            result
+          }
         />
 
         <div
@@ -456,17 +225,21 @@ const CaseStudyResultsPage = () => {
                 .guidedInvestigationQuestions
             }
             findings={
-              result
-                .guidedInvestigationFindings
+              serverResults.findings
             }
-            navigationState={
-              guidedImprovementNavigationState
-            } 
             initialProgress={
-              savedInvestigation
+              serverResults
+                .investigation
             }
-            onProgressChange={
-              handleInvestigationProgressChange
+            initialFeedbackMessage={
+              serverResults
+                .currentFeedbackMessage
+            }
+            onCheckAnswer={
+              checkAnswer
+            }
+            onNext={
+              handleAdvanceInvestigation
             }
             onStepChange={
               scrollToGuidedInvestigation
@@ -485,6 +258,12 @@ type ResultsPageLayoutProps = {
 const ResultsPageLayout = ({
   children,
 }: ResultsPageLayoutProps) => {
+  const {
+    progress:
+      sharedProgress,
+  } =
+    useSharedCaseStudyProgress();
+
   return (
     <div
       className="
@@ -509,6 +288,14 @@ const ResultsPageLayout = ({
       >
         <CaseStudyPageHeader
           currentStage="results"
+          allowedStages={
+            sharedProgress
+              ?.allowedStages
+          }
+          nextStage={
+            sharedProgress
+              ?.nextStage
+          }
         />
 
         {children}

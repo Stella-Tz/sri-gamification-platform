@@ -1,37 +1,49 @@
 // client/src/components/ui/PageState.tsx
 
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
+
+import RouteLoadingState from "./RouteLoadingState";
 
 type PageStateProps = {
   isLoading: boolean;
+
   error?: string | null;
+
   isEmpty?: boolean;
+
   loadingText?: string;
+
   emptyText?: string;
+
   errorText?: string;
+
   children: ReactNode;
 };
 
 const PageState = ({
   isLoading,
+
   error,
+
   isEmpty = false,
+
   loadingText = "Loading...",
-  emptyText = "No content is available.",
-  errorText = "Something went wrong.",
+
+  emptyText =
+    "No content is available.",
+
+  errorText =
+    "Something went wrong.",
+
   children,
 }: PageStateProps) => {
   if (isLoading) {
     return (
-      <section
-        role="status"
-        aria-live="polite"
-        className="rounded-3xl border border-slate-200 bg-white px-7 py-14 text-center shadow-sm"
-      >
-        <p className="text-sm font-semibold leading-6 text-slate-500">
-          {loadingText}
-        </p>
-      </section>
+      <RouteLoadingState
+        label={loadingText}
+      />
     );
   }
 

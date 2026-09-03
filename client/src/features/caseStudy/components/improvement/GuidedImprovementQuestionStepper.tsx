@@ -7,10 +7,14 @@ import {
 
 import { Check } from "lucide-react";
 
-import type { GuidedImprovementQuestion } from "../../types/caseStudy.types";
+import type {
+  GuidedImprovementPublicQuestion,
+} from "../../improvement/guidedImprovement.types";
 
 type GuidedImprovementQuestionStepperProps = {
-  questions: readonly GuidedImprovementQuestion[];
+  questions:
+    readonly GuidedImprovementPublicQuestion[];
+
   currentIndex: number;
 };
 

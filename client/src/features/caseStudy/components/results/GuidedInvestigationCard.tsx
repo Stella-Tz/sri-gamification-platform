@@ -33,73 +33,44 @@ import investigationCompleteCheckImage from "../../../../assets/caseStudy/invest
 import keyFunctionalitiesImpactCategoriesImage from "../../../../assets/caseStudy/key_functionalites_impact_categories.png";
 
 import type {
-  BuildingType,
-  CaseStudyDetails,
-  CaseStudySubmitResult,
-  ClimateZone,
-  DomainPresence,
-  GuidedInvestigationFindings,
-  GuidedInvestigationQuestion,
-  OfficialAssessmentMethod,
-  ServiceAnswer,
-  SriService,
-  TechnicalDomainName,
-} from "../../types/caseStudy.types";
+  ResultsInvestigationAdvanceResult,
+  ResultsInvestigationAnswer,
+  ResultsInvestigationCheckResult,
+  ResultsInvestigationProgress,
+  ResultsInvestigationQuestion,
+} from "../../results/caseStudyResults.types";
 
 import type {
-  CaseStudyResultsInvestigationAnswer,
-  CaseStudyResultsInvestigationProgress,
-} from "../../progress/caseStudyProgress.types";
-
-type GuidedImprovementNavigationState = {
-  result?: CaseStudySubmitResult;
-  caseStudy?: CaseStudyDetails;
-
-  answers?: Record<
-    string,
-    ServiceAnswer
-  >;
-
-  assessmentMethod?: OfficialAssessmentMethod;
-
-  serviceApplicability?: Record<
-    string,
-    boolean
-  >;
-
-  domainPresence?: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  buildingType?: BuildingType;
-  climateZone?: ClimateZone;
-
-  /*
-   * Fully resolved Catalogue A or B.
-   */
-  services?: readonly SriService[];
-};
-
+  GuidedInvestigationFindings,
+} from "../../results/caseStudyResults.types";
 
 type GuidedInvestigationCardProps = {
   questions:
-    readonly GuidedInvestigationQuestion[];
+    readonly ResultsInvestigationQuestion[];
 
   findings:
-    GuidedInvestigationFindings;
-
-  navigationState?:
-    GuidedImprovementNavigationState;
-
-  initialProgress?:
-    | CaseStudyResultsInvestigationProgress
+    | GuidedInvestigationFindings
     | null;
 
-  onProgressChange?: (
-    progress:
-      CaseStudyResultsInvestigationProgress,
-  ) => void;
+  initialProgress?:
+    | ResultsInvestigationProgress
+    | null;
+
+  initialFeedbackMessage?:
+    | string
+    | null;
+
+  onCheckAnswer: (
+    questionId: string,
+    selectedAnswers:
+      readonly string[],
+  ) => Promise<
+    ResultsInvestigationCheckResult
+  >;
+
+  onNext: () => Promise<
+    ResultsInvestigationAdvanceResult
+  >;
 
   onCompleted?: () => void;
   onStepChange?: () => void;
@@ -129,59 +100,12 @@ const questionPathLabelsById:
       "Candidate Services",
   };
 
-const formatList = (
-  values: readonly string[],
-): string => {
-  if (values.length === 0) return "";
-
-  if (values.length === 1) {
-    return values[0];
-  }
-
-  if (values.length === 2) {
-    return `${values[0]} and ${values[1]}`;
-  }
-
-  return `${values
-    .slice(0, -1)
-    .join(", ")}, and ${values[values.length - 1]}`;
-};
-
-const getWrongFeedback = (
-  questionId: string,
-  findings: GuidedInvestigationFindings,
-): string => {
-  const domainLabel = formatList(
-    findings.weakestTechnicalDomains,
-  );
-
-  switch (questionId) {
-    case "lowest-key-functionality":
-      return "Not quite. Compare the three key functionality scores and identify the one with the lowest score.";
-
-    case "related-impact-criteria":
-      return `Not quite. Use the relationship shown above and select all impact criteria associated with ${findings.weakestKeyFunctionality}.`;
-
-    case "lowest-impact-within-functionality":
-      return `Not quite. Compare the scores of the impact criteria associated with ${findings.weakestKeyFunctionality} and identify the lowest-scoring one.`;
-
-    case "lowest-domain-for-impact":
-      return `Not quite. In the detailed score matrix, look under ${findings.lowestImpactCriterion} and identify all technical domains that share the lowest score.`;
-
-    case "candidate-services-for-improvement":
-      return `Not quite. Review ${domainLabel} in the Assessed Services by Domain card. Look for services that affect ${findings.lowestImpactCriterion} and are not already at their maximum functionality level.`;
-
-    default:
-      return "Not quite. Review the relevant assessment results and try again.";
-  }
-};
-
 const getInvestigationAnswer = (
   answers:
-    readonly CaseStudyResultsInvestigationAnswer[],
+    readonly ResultsInvestigationAnswer[],
 
   questionId: string,
-): CaseStudyResultsInvestigationAnswer | null => {
+): ResultsInvestigationAnswer | null => {
   return (
     answers.find(
       (answer) =>
@@ -191,27 +115,9 @@ const getInvestigationAnswer = (
   );
 };
 
-const upsertInvestigationAnswer = (
-  answers:
-    readonly CaseStudyResultsInvestigationAnswer[],
-
-  nextAnswer:
-    CaseStudyResultsInvestigationAnswer,
-): CaseStudyResultsInvestigationAnswer[] => {
-  return [
-    ...answers.filter(
-      (answer) =>
-        answer.questionId !==
-        nextAnswer.questionId,
-    ),
-
-    nextAnswer,
-  ];
-};
-
 const getSafeInvestigationIndex = (
   questions:
-    readonly GuidedInvestigationQuestion[],
+    readonly ResultsInvestigationQuestion[],
 
   requestedIndex: number,
 ): number => {
@@ -232,11 +138,12 @@ const getSafeInvestigationIndex = (
 const GuidedInvestigationCard = ({
   questions,
   findings,
-  navigationState,
 
   initialProgress = null,
+  initialFeedbackMessage = null,
 
-  onProgressChange,
+  onCheckAnswer,
+  onNext,
   onCompleted,
   onStepChange,
 }: GuidedInvestigationCardProps) => {
@@ -273,17 +180,6 @@ const GuidedInvestigationCard = ({
   );
 
   const [
-    answers,
-    setAnswers,
-  ] = useState<
-    CaseStudyResultsInvestigationAnswer[]
-  >(
-    () => [
-      ...initialAnswers,
-    ],
-  );
-
-  const [
     selectedAnswers,
     setSelectedAnswers,
   ] = useState<string[]>(
@@ -302,6 +198,16 @@ const GuidedInvestigationCard = ({
   );
 
   const [
+    feedbackMessage,
+    setFeedbackMessage,
+  ] = useState<
+    string | null
+  >(
+    () =>
+      initialFeedbackMessage,
+  );
+
+  const [
     isCompleted,
     setIsCompleted,
   ] = useState(
@@ -309,6 +215,38 @@ const GuidedInvestigationCard = ({
       initialProgress
         ?.completed === true,
   );
+
+  const [
+    resolvedFindings,
+    setResolvedFindings,
+  ] = useState<
+    GuidedInvestigationFindings | null
+  >(
+    () => findings,
+  );
+
+  const [
+    isChecking,
+    setIsChecking,
+  ] = useState(false);
+
+  const [
+    isAdvancing,
+    setIsAdvancing,
+  ] = useState(false);
+
+  const [
+    actionError,
+    setActionError,
+  ] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    setResolvedFindings(
+      findings,
+    );
+  }, [findings]);
 
   if (questions.length === 0) {
     return (
@@ -327,61 +265,32 @@ const GuidedInvestigationCard = ({
     );
   }
 
-  const currentSavedAnswer =
-    getInvestigationAnswer(
-      answers,
-      currentQuestion.id,
-    );
-
   const isLastQuestion =
     currentIndex ===
     questions.length - 1;
 
-  const emitProgress = ({
-    nextCurrentIndex =
-      currentIndex,
-
-    nextAnswers =
-      answers,
-
-    nextCompleted =
-      isCompleted,
-  }: {
-    nextCurrentIndex?: number;
-
-    nextAnswers?:
-      CaseStudyResultsInvestigationAnswer[];
-
-    nextCompleted?: boolean;
-  }) => {
-    onProgressChange?.({
-      currentIndex:
-        nextCurrentIndex,
-
-      answers:
-        nextAnswers,
-
-      completed:
-        nextCompleted,
-    });
+  const applyServerProgress = (
+    progress:
+      ResultsInvestigationProgress,
+  ) => {
+    return progress.answers ?? [];
   };
 
   /*
-   * Selecting an option changes only the local
-   * draft. The answer is persisted after the
-   * user explicitly presses Check Answer.
+   * Selecting an option changes only the
+   * local draft. Correctness remains hidden
+   * until the backend checks the answer.
    */
   const handleSingleChoice = (
     value: string,
   ) => {
-    const nextSelectedAnswers =
-      [value];
-
     setSelectedAnswers(
-      nextSelectedAnswers,
+      [value],
     );
 
     setFeedback(null);
+    setFeedbackMessage(null);
+    setActionError(null);
   };
 
   const handleMultipleChoice = (
@@ -405,138 +314,170 @@ const GuidedInvestigationCard = ({
     );
 
     setFeedback(null);
+    setFeedbackMessage(null);
+    setActionError(null);
   };
 
-  const handleCheckAnswer = () => {
-    if (
-      selectedAnswers.length === 0
-    ) {
-      /*
-       * An empty check only updates the local
-       * feedback. It is not a submitted answer
-       * and therefore is not persisted.
-       */
-      setFeedback("empty");
+  const handleCheckAnswer =
+    async () => {
+      if (
+        isChecking ||
+        isAdvancing
+      ) {
+        return;
+      }
 
-      return;
-    }
+      setActionError(null);
+      setIsChecking(true);
 
-    const isCorrect =
-      areAnswersEqual(
-        selectedAnswers,
+      try {
+        const response =
+          await onCheckAnswer(
+            currentQuestion.id,
+            selectedAnswers,
+          );
 
-        currentQuestion
-          .correctOptionValues,
-      );
+        setFeedback(
+          response.feedback,
+        );
 
-    const nextFeedback:
-      FeedbackState =
-      isCorrect
-        ? "correct"
-        : "wrong";
+        setFeedbackMessage(
+          response.feedbackMessage,
+        );
 
-    const nextAnswer:
-      CaseStudyResultsInvestigationAnswer =
-      {
-        questionId:
-          currentQuestion.id,
+        if (
+          response.persisted
+        ) {
+          applyServerProgress(
+            response.progress,
+          );
+        }
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not check the answer.",
+        );
+      } finally {
+        setIsChecking(false);
+      }
+    };
 
-        selectedAnswers:
-          [
-            ...selectedAnswers,
-          ],
+  const handleNext =
+    async () => {
+      if (
+        feedback !==
+          "correct" ||
+        isChecking ||
+        isAdvancing
+      ) {
+        return;
+      }
 
-        feedback:
-          nextFeedback,
+      setActionError(null);
+      setIsAdvancing(true);
 
-        attempts:
-          (
-            currentSavedAnswer
-              ?.attempts ?? 0
-          ) + 1,
-      };
+      try {
+        const response =
+          await onNext();
 
-    const nextAnswers =
-      upsertInvestigationAnswer(
-        answers,
-        nextAnswer,
-      );
+        const nextProgress =
+          response.progress;
 
-    setFeedback(
-      nextFeedback,
-    );
+        const nextAnswers =
+          applyServerProgress(
+            nextProgress,
+          );
 
-    setAnswers(
-      nextAnswers,
-    );
+        if (
+          nextProgress.completed
+        ) {
+          if (
+            !response.findings
+          ) {
+            throw new Error(
+              "Results Investigation findings are unavailable.",
+            );
+          }
 
-    emitProgress({
-      nextAnswers,
-      nextCompleted: false,
-    });
-  };
+          setResolvedFindings(
+            response.findings,
+          );
 
-  const handleNext = () => {
-    onStepChange?.();
+          setIsCompleted(true);
 
-    if (isLastQuestion) {
-      setIsCompleted(true);
+          onCompleted?.();
 
-      emitProgress({
-        nextCompleted: true,
-      });
+          return;
+        }
 
-      onCompleted?.();
+        const nextIndex =
+          getSafeInvestigationIndex(
+            questions,
+            nextProgress
+              .currentIndex,
+          );
 
-      return;
-    }
+        const nextQuestion =
+          questions[
+            nextIndex
+          ] ?? null;
 
-    const nextIndex =
-      currentIndex + 1;
+        const nextQuestionAnswer =
+          nextQuestion
+            ? getInvestigationAnswer(
+                nextAnswers,
+                nextQuestion.id,
+              )
+            : null;
 
-    const nextQuestion =
-      questions[
-        nextIndex
-      ] ?? null;
+        setCurrentIndex(
+          nextIndex,
+        );
 
-    const nextQuestionAnswer =
-      nextQuestion
-        ? getInvestigationAnswer(
-            answers,
-            nextQuestion.id,
-          )
-        : null;
+        setSelectedAnswers(
+          nextQuestionAnswer
+            ?.selectedAnswers ?? [],
+        );
 
-    setCurrentIndex(
-      nextIndex,
-    );
+        setFeedback(
+          nextQuestionAnswer
+            ?.feedback ?? null,
+        );
 
-    setSelectedAnswers(
-      nextQuestionAnswer
-        ?.selectedAnswers ?? [],
-    );
+        /*
+         * A future question normally has no
+         * saved feedback. f persisted progress does not
+         * contain saved feedback, the state is restored
+         * but no hidden correctness data are
+         * reconstructed on the client.
+         */
+        setFeedbackMessage(
+          null,
+        );
 
-    setFeedback(
-      nextQuestionAnswer
-        ?.feedback ?? null,
-    );
-
-    emitProgress({
-      nextCurrentIndex:
-        nextIndex,
-
-      nextCompleted:
-        false,
-    });
-  };
+        onStepChange?.();
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not continue the Results Investigation.",
+        );
+      } finally {
+        setIsAdvancing(false);
+      }
+    };
 
   if (isCompleted) {
+    if (!resolvedFindings) {
+      return (
+        <GuidedInvestigationErrorState />
+      );
+    }
+
     return (
       <InvestigationCompletedPanel
-        findings={findings}
-        navigationState={
-          navigationState
-        }
+        findings={resolvedFindings}
       />
     );
   }
@@ -624,6 +565,10 @@ const GuidedInvestigationCard = ({
           selectedAnswers={
             selectedAnswers
           }
+          disabled={
+            isChecking ||
+            isAdvancing
+          }
           onSingleChoice={
             handleSingleChoice
           }
@@ -635,19 +580,41 @@ const GuidedInvestigationCard = ({
         {feedback ? (
           <FeedbackMessage
             feedback={feedback}
-            questionId={currentQuestion.id}
-            findings={findings}
+            message={feedbackMessage}
           />
+        ) : null}
+
+        {actionError ? (
+          <div
+            role="alert"
+            className="mt-5 flex items-start gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700"
+          >
+            <XCircle
+              size={18}
+              className="mt-0.5 shrink-0"
+              aria-hidden="true"
+            />
+
+            <p>{actionError}</p>
+          </div>
         ) : null}
 
         <div className="mt-6 flex justify-end">
           {feedback ===
           "correct" ? (
             <PrimaryButton
-              onClick={
-                handleNext
-              }
-              className="group w-full px-7 sm:w-auto"
+              onClick={() => {
+                void handleNext();
+              }}
+              disabled={isAdvancing}
+              className="
+                group
+                w-full
+                px-7
+                sm:w-auto
+                disabled:!bg-blue-600
+                disabled:!opacity-100
+              "
             >
               <span className="inline-flex items-center gap-2">
                 {isLastQuestion
@@ -659,12 +626,15 @@ const GuidedInvestigationCard = ({
             </PrimaryButton>
           ) : (
             <PrimaryButton
-              onClick={
-                handleCheckAnswer
-              }
+              onClick={() => {
+                void handleCheckAnswer();
+              }}
+              disabled={isChecking}
               className="w-full px-7 sm:w-auto"
             >
-              Check Answer
+              {isChecking
+                ? "Checking..."
+                : "Check Answer"}
             </PrimaryButton>
           )}
         </div>
@@ -677,7 +647,7 @@ type QuestionPathProps = {
   currentIndex: number;
 
   questions:
-    readonly GuidedInvestigationQuestion[];
+    readonly ResultsInvestigationQuestion[];
 };
 
 const QuestionPath = ({
@@ -869,10 +839,12 @@ const QuestionPath = ({
 
 type AnswerOptionsProps = {
   question:
-    GuidedInvestigationQuestion;
+    ResultsInvestigationQuestion;
 
   selectedAnswers:
     readonly string[];
+
+  disabled: boolean;
 
   onSingleChoice: (
     value: string,
@@ -886,6 +858,7 @@ type AnswerOptionsProps = {
 const AnswerOptions = ({
   question,
   selectedAnswers,
+  disabled,
   onSingleChoice,
   onMultipleChoice,
 }: AnswerOptionsProps) => {
@@ -900,7 +873,12 @@ const AnswerOptions = ({
 
   return (
     <fieldset
+      aria-disabled={disabled}
       className={`mt-5 grid gap-3 ${
+        disabled
+          ? "pointer-events-none select-none"
+          : ""
+      } ${
         shouldUseTwoColumns
           ? "md:grid-cols-2"
           : "md:grid-cols-1"
@@ -923,7 +901,6 @@ const AnswerOptions = ({
               className={`
                 flex
                 min-w-0
-                cursor-pointer
                 items-center
                 gap-3
                 rounded-2xl
@@ -937,9 +914,16 @@ const AnswerOptions = ({
                 transition-colors
                 duration-200
                 ${
+                  disabled
+                    ? "cursor-default"
+                    : "cursor-pointer"
+                }
+                ${
                   isSelected
                     ? "border-blue-300 ring-4 ring-blue-100"
-                    : "border-slate-200 hover:border-blue-200"
+                    : disabled
+                      ? "border-slate-200"
+                      : "border-slate-200 hover:border-blue-200"
                 }
               `}
             >
@@ -952,16 +936,24 @@ const AnswerOptions = ({
                 name={question.id}
                 value={option.value}
                 checked={isSelected}
-                onChange={() =>
-                  isMultipleChoice
-                    ? onMultipleChoice(
-                        option.value,
-                      )
-                    : onSingleChoice(
-                        option.value,
-                      )
-                }
-                className="
+                aria-disabled={disabled}
+                tabIndex={disabled ? -1 : 0}
+                onChange={() => {
+                  if (disabled) {
+                    return;
+                  }
+
+                  if (isMultipleChoice) {
+                    onMultipleChoice(
+                      option.value,
+                    );
+                  } else {
+                    onSingleChoice(
+                      option.value,
+                    );
+                  }
+                }}
+                                className="
                   h-4
                   w-4
                   shrink-0
@@ -982,14 +974,15 @@ const AnswerOptions = ({
 
 type FeedbackMessageProps = {
   feedback: FeedbackState;
-  questionId: string;
-  findings: GuidedInvestigationFindings;
+
+  message:
+    | string
+    | null;
 };
 
 const FeedbackMessage = ({
   feedback,
-  questionId,
-  findings
+  message,
 }: FeedbackMessageProps) => {
   if (feedback === "empty") {
     return (
@@ -1004,7 +997,8 @@ const FeedbackMessage = ({
         />
 
         <p>
-          Please select at least one answer before checking.
+          {message ??
+            "Please select at least one answer before checking."}
         </p>
       </div>
     );
@@ -1023,10 +1017,8 @@ const FeedbackMessage = ({
         />
 
         <p>
-          {getWrongFeedback(
-            questionId,
-            findings,
-          )}
+          {message ??
+            "Not quite. Review the relevant assessment results and try again."}
         </p>
       </div>
     );
@@ -1047,7 +1039,8 @@ const FeedbackMessage = ({
 
           <div className="min-w-0">
             <p className="leading-6">
-              Correct. You can continue to the next step.
+              {message ??
+                "Correct. You can continue to the next step."}
             </p>
           </div>
         </div>
@@ -1061,33 +1054,17 @@ const FeedbackMessage = ({
 type InvestigationCompletedPanelProps = {
   findings:
     GuidedInvestigationFindings;
-
-  navigationState?:
-    GuidedImprovementNavigationState;
 };
 
 const InvestigationCompletedPanel = ({
   findings,
-  navigationState,
 }: InvestigationCompletedPanelProps) => {
   const navigate = useNavigate();
 
-  const canContinue =
-    isCompleteNavigationState(
-      navigationState,
-    );
-
   const handleContinue = () => {
-    if (!canContinue) {
-      return;
-    }
-
     navigate(
       CASE_STUDY_ROUTES
         .guidedImprovementAnalysis,
-      {
-        state: navigationState,
-      },
     );
   };
 
@@ -1145,22 +1122,18 @@ const InvestigationCompletedPanel = ({
       </div>
 
       <div className="relative z-10 mt-6 border-t border-slate-200 pt-5">
-        {canContinue ? (
-          <div className="flex justify-center">
-            <PrimaryButton
-              onClick={handleContinue}
-              className="group w-full sm:w-auto"
-            >
-              <span className="flex items-center gap-2">
-                Start Guided Improvement Analysis
+        <div className="flex justify-center">
+          <PrimaryButton
+            onClick={handleContinue}
+            className="group w-full sm:w-auto"
+          >
+            <span className="flex items-center gap-2">
+              Start Guided Improvement Analysis
 
-                <ForwardArrowIcon />
-              </span>
-            </PrimaryButton>
-          </div>
-        ) : (
-          <GuidedImprovementUnavailableState />
-        )}
+              <ForwardArrowIcon />
+            </span>
+          </PrimaryButton>
+        </div>
       </div>
     </section>
   );
@@ -1466,106 +1439,5 @@ const GuidedInvestigationErrorState =
       </section>
     );
   };
-
-const GuidedImprovementUnavailableState =
-  () => {
-    return (
-      <div
-        role="alert"
-        className="mx-auto flex max-w-2xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-      >
-        <AlertCircle
-          size={18}
-          className="mt-0.5 shrink-0 text-amber-700"
-          aria-hidden="true"
-        />
-
-        <div className="min-w-0">
-          <h3 className="text-sm font-extrabold leading-6 text-amber-900">
-            Guided Improvement Analysis Unavailable
-          </h3>
-
-          <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
-            The assessment data required for the next step are missing.
-            Return to the case study and complete the assessment again.
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-type CompleteGuidedImprovementNavigationState = {
-  result: CaseStudySubmitResult;
-  caseStudy: CaseStudyDetails;
-
-  answers: Record<
-    string,
-    ServiceAnswer
-  >;
-
-  assessmentMethod:
-    OfficialAssessmentMethod;
-
-  serviceApplicability: Record<
-    string,
-    boolean
-  >;
-
-  domainPresence: Record<
-    TechnicalDomainName,
-    DomainPresence | ""
-  >;
-
-  buildingType: BuildingType;
-  climateZone: ClimateZone;
-
-  services: readonly SriService[];
-};
-
-const isCompleteNavigationState = (
-  state:
-    | GuidedImprovementNavigationState
-    | undefined,
-): state is CompleteGuidedImprovementNavigationState => {
-  return (
-    state?.result !== undefined &&
-    state.caseStudy !== undefined &&
-    state.answers !== undefined &&
-    state.assessmentMethod !==
-      undefined &&
-    state.serviceApplicability !==
-      undefined &&
-    state.domainPresence !==
-      undefined &&
-    state.buildingType !==
-      undefined &&
-    state.climateZone !==
-      undefined &&
-    state.services !== undefined
-  );
-};
-
-const areAnswersEqual = (
-  selectedAnswers:
-    readonly string[],
-
-  correctAnswers:
-    readonly string[],
-) => {
-  if (
-    selectedAnswers.length !==
-    correctAnswers.length
-  ) {
-    return false;
-  }
-
-  const selectedSet =
-    new Set(selectedAnswers);
-
-  return correctAnswers.every(
-    (answer) =>
-      selectedSet.has(answer),
-  );
-};
 
 export default GuidedInvestigationCard;

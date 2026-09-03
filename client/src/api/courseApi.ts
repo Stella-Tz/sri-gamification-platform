@@ -1,94 +1,32 @@
+// client/src/api/courseApi.ts
+
 import {
   apiClient,
 } from "./apiClient";
 
 import type {
-  CourseQuestion,
+  FinalTestAnswerResult,
+  FinalTestAnswerSubmission,
+  FinalTestState,
+  LessonQuizAnswerResult,
+  LessonQuizCompletionAnswer,
+  LessonQuizData,
   UserCourseProgress,
 } from "../features/course/course.types";
 
-
-// -----------------------------------------------------------------------------
-// Lesson quiz
-// -----------------------------------------------------------------------------
-
-export type LessonQuizDto = {
-  quizId: string;
-  sectionId: string;
-  lessonId: string;
-
-  questions: CourseQuestion[];
-};
-
-export type LessonQuizAnswerResult = {
-  questionId: string;
-
-  correct: boolean;
-
-  correctOptionId: string;
-  explanation: string;
-};
-
-export type LessonQuizCompletionAnswer = {
-  questionId: string;
-  selectedOptionId: string;
-};
-
-// -----------------------------------------------------------------------------
-// Final test
-// -----------------------------------------------------------------------------
-
-export type FinalTestState = {
-  attemptId: string;
-
-  finalTestId: string;
-  sectionId: string;
-
-  status:
-    | "in-progress"
-    | "passed"
-    | "failed";
-
-  allowedMistakes: number;
-  remainingMistakes: number;
-
-  correctCount: number;
-  wrongCount: number;
-
-  answeredCount: number;
-  totalQuestions: number;
-
-  accuracyPercentage: number;
-  scorePercentage: number;
-
-  currentQuestionNumber: number;
-
-  currentQuestion:
-  | CourseQuestion
-  | null;
-
-  completedAt:
-    | string
-    | null;
-};
-
-export type FinalTestAnswerResult = {
-  questionId: string;
-  correct: boolean;
-
-  attempt: FinalTestState;
-};
 
 // -----------------------------------------------------------------------------
 // API response wrappers
 // -----------------------------------------------------------------------------
 
 type ProgressResponse = {
-  progress: UserCourseProgress;
+  progress:
+    UserCourseProgress;
 };
 
 type LessonQuizResponse = {
-  quiz: LessonQuizDto;
+  quiz:
+    LessonQuizData;
 };
 
 type LessonQuizAnswerResponse = {
@@ -97,12 +35,17 @@ type LessonQuizAnswerResponse = {
 };
 
 type FinalTestResponse = {
-  attempt: FinalTestState;
+  attempt:
+    FinalTestState;
 };
 
 type FinalTestAnswerResponse = {
   result:
     FinalTestAnswerResult;
+
+  progress:
+    | UserCourseProgress
+    | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -113,7 +56,9 @@ export const courseApi = {
   async getProgress():
     Promise<UserCourseProgress> {
     const response =
-      await apiClient<ProgressResponse>(
+      await apiClient<
+        ProgressResponse
+      >(
         "/course/progress",
       );
 
@@ -124,10 +69,13 @@ export const courseApi = {
     lessonStepId: string,
   ): Promise<UserCourseProgress> {
     const response =
-      await apiClient<ProgressResponse>(
+      await apiClient<
+        ProgressResponse
+      >(
         `/course/lessons/${lessonStepId}/complete`,
         {
-          method: "POST",
+          method:
+            "POST",
         },
       );
 
@@ -136,9 +84,11 @@ export const courseApi = {
 
   async getLessonQuiz(
     quizStepId: string,
-  ): Promise<LessonQuizDto> {
+  ): Promise<LessonQuizData> {
     const response =
-      await apiClient<LessonQuizResponse>(
+      await apiClient<
+        LessonQuizResponse
+      >(
         `/course/quizzes/${quizStepId}`,
       );
 
@@ -151,20 +101,26 @@ export const courseApi = {
       questionId: string;
       selectedOptionId: string;
     },
-  ): Promise<LessonQuizAnswerResult> {
+  ): Promise<
+    LessonQuizAnswerResult
+  > {
     const response =
-      await apiClient<LessonQuizAnswerResponse>(
+      await apiClient<
+        LessonQuizAnswerResponse
+      >(
         `/course/quizzes/${input.quizStepId}/answer`,
         {
-          method: "POST",
+          method:
+            "POST",
 
-          body: JSON.stringify({
-            questionId:
-              input.questionId,
+          body:
+            JSON.stringify({
+              questionId:
+                input.questionId,
 
-            selectedOptionId:
-              input.selectedOptionId,
-          }),
+              selectedOptionId:
+                input.selectedOptionId,
+            }),
         },
       );
 
@@ -180,15 +136,19 @@ export const courseApi = {
     },
   ): Promise<UserCourseProgress> {
     const response =
-      await apiClient<ProgressResponse>(
+      await apiClient<
+        ProgressResponse
+      >(
         `/course/quizzes/${input.quizStepId}/complete`,
         {
-          method: "POST",
+          method:
+            "POST",
 
-          body: JSON.stringify({
-            answers:
-              input.answers,
-          }),
+          body:
+            JSON.stringify({
+              answers:
+                input.answers,
+            }),
         },
       );
 
@@ -199,10 +159,13 @@ export const courseApi = {
     finalTestStepId: string,
   ): Promise<FinalTestState> {
     const response =
-      await apiClient<FinalTestResponse>(
+      await apiClient<
+        FinalTestResponse
+      >(
         `/course/final-tests/${finalTestStepId}/start`,
         {
-          method: "POST",
+          method:
+            "POST",
         },
       );
 
@@ -213,7 +176,9 @@ export const courseApi = {
     attemptId: string,
   ): Promise<FinalTestState> {
     const response =
-      await apiClient<FinalTestResponse>(
+      await apiClient<
+        FinalTestResponse
+      >(
         `/course/final-tests/attempts/${attemptId}`,
       );
 
@@ -226,33 +191,39 @@ export const courseApi = {
       questionId: string;
       selectedOptionId: string;
     },
-  ): Promise<FinalTestAnswerResult> {
-    const response =
-      await apiClient<FinalTestAnswerResponse>(
-        `/course/final-tests/attempts/${input.attemptId}/answer`,
-        {
-          method: "POST",
+  ): Promise<
+    FinalTestAnswerSubmission
+  > {
+    return apiClient<
+      FinalTestAnswerResponse
+    >(
+      `/course/final-tests/attempts/${input.attemptId}/answer`,
+      {
+        method:
+          "POST",
 
-          body: JSON.stringify({
+        body:
+          JSON.stringify({
             questionId:
               input.questionId,
 
             selectedOptionId:
               input.selectedOptionId,
           }),
-        },
-      );
-
-    return response.result;
+      },
+    );
   },
 
   async resetProgress():
     Promise<UserCourseProgress> {
     const response =
-      await apiClient<ProgressResponse>(
+      await apiClient<
+        ProgressResponse
+      >(
         "/course/progress/reset",
         {
-          method: "POST",
+          method:
+            "POST",
         },
       );
 

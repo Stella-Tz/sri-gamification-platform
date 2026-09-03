@@ -1,11 +1,6 @@
 // client/src/pages/CourseLessonPage.tsx
 
 import {
-  useMemo,
-  useState,
-} from "react";
-
-import {
   ArrowLeft,
 } from "lucide-react";
 
@@ -17,11 +12,10 @@ import {
 } from "react-router-dom";
 
 import ForwardArrowIcon from "../components/ui/ForwardArrowIcon";
+
 import PrimaryButton from "../components/ui/PrimaryButton";
 
-import {
-  courseApi,
-} from "../api/courseApi";
+import RouteLoadingState from "../components/ui/RouteLoadingState";
 
 import {
   ROUTES,
@@ -37,11 +31,7 @@ import {
 
 import {
   useCourseProgress,
-} from "../features/course/hooks/useCourseProgress";
-
-import {
-  buildCourseOverview,
-} from "../features/course/utils/buildCourseOverview";
+} from "../app/providers/CourseProgressProvider";
 
 import TheoryLessonContent from "../features/theory/components/TheoryLessonContent";
 
@@ -72,44 +62,38 @@ const CourseLessonPage = () => {
 
   const {
     progress,
+
     isLoading:
       isProgressLoading,
+
     error:
       progressError,
-    replaceProgress,
-  } = useCourseProgress();
 
-  const [
+    completeLesson,
     isCompletingLesson,
-    setIsCompletingLesson,
-  ] = useState(false);
+    actionError,
+  } =
+    useCourseProgress();
 
-  const [
-    completionError,
-    setCompletionError,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const overview = useMemo(
-    () =>
-      buildCourseOverview(
-        courseDefinition,
-        progress,
-      ),
-    [progress],
-  );
-
+  /*
+   * courseDefinition supplies only static
+   * presentation/routing metadata.
+   *
+   * Availability comes directly from the
+   * canonical backend progress DTO.
+   */
   const courseSection =
-    overview.sections.find(
+    courseDefinition.sections.find(
       (item) =>
-        item.id === sectionId,
+        item.id ===
+        sectionId,
     ) ?? null;
 
   const lessonStep =
     courseSection?.steps.find(
       (step) =>
-        step.type === "lesson" &&
+        step.type ===
+          "lesson" &&
         step.lessonId ===
           lessonId,
     ) ?? null;
@@ -117,14 +101,25 @@ const CourseLessonPage = () => {
   const quizStep =
     courseSection?.steps.find(
       (step) =>
-        step.type === "quiz" &&
+        step.type ===
+          "quiz" &&
         step.lessonId ===
           lessonId,
     ) ?? null;
 
+  const lessonStepProgress =
+    lessonStep
+      ? progress.steps.find(
+          (item) =>
+            item.stepId ===
+            lessonStep.id,
+        ) ?? null
+      : null;
+
   const isLessonOpenable =
-    lessonStep !== null &&
-    lessonStep.status !==
+    lessonStepProgress !==
+      null &&
+    lessonStepProgress.status !==
       "locked";
 
   if (
@@ -146,9 +141,9 @@ const CourseLessonPage = () => {
 
   if (isProgressLoading) {
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500 shadow-sm">
-        Loading course progress...
-      </div>
+      <RouteLoadingState
+        label="Loading course progress..."
+      />
     );
   }
 
@@ -171,26 +166,20 @@ const CourseLessonPage = () => {
 
   const handleContinueToQuiz =
     async () => {
-      if (isCompletingLesson) {
+      if (
+        isCompletingLesson
+      ) {
         return;
       }
 
       try {
-        setIsCompletingLesson(
-          true,
-        );
-
-        setCompletionError(
-          null,
-        );
-
-        const nextProgress =
-          await courseApi.completeLesson(
-            lessonStep.id,
-          );
-
-        replaceProgress(
-          nextProgress,
+        /*
+         * API orchestration and canonical
+         * progress replacement live in the
+         * shared Course progress hook.
+         */
+        await completeLesson(
+          lessonStep.id,
         );
 
         navigate(
@@ -198,16 +187,11 @@ const CourseLessonPage = () => {
             quizStep,
           ),
         );
-      } catch (error) {
-        setCompletionError(
-          error instanceof Error
-            ? error.message
-            : "Failed to complete lesson.",
-        );
-      } finally {
-        setIsCompletingLesson(
-          false,
-        );
+      } catch {
+        /*
+         * actionError is owned by the hook
+         * and rendered below.
+         */
       }
     };
 
@@ -254,9 +238,10 @@ const CourseLessonPage = () => {
           section.order
         }
       />
-      {completionError ? (
+
+      {actionError ? (
         <p className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-          {completionError}
+          {actionError}
         </p>
       ) : null}
 

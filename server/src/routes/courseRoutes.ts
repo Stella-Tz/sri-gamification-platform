@@ -1,9 +1,13 @@
+// server/src/routes/courseRoutes.ts
+
 import type {
   Request,
   Response,
 } from "express";
 
-import { Router } from "express";
+import {
+  Router,
+} from "express";
 
 import {
   authMiddleware,
@@ -26,13 +30,16 @@ import {
   validateLessonQuizAnswer,
 } from "../services/courseAssessmentService.js";
 
-const router = Router();
+const router =
+  Router();
 
-/*
+/**
  * All Course routes require an
  * authenticated user.
  */
-router.use(authMiddleware);
+router.use(
+  authMiddleware,
+);
 
 const getAuthenticatedUserId = (
   req: Request,
@@ -54,17 +61,22 @@ const handleCourseError = (
     error instanceof
       CourseAssessmentError
   ) {
-    return res.status(400).json({
-      message: error.message,
-    });
+    return res
+      .status(400)
+      .json({
+        message:
+          error.message,
+      });
   }
 
   console.error(error);
 
-  return res.status(500).json({
-    message:
-      "Failed to process course request.",
-  });
+  return res
+    .status(500)
+    .json({
+      message:
+        "Failed to process course request.",
+    });
 };
 
 // -----------------------------------------------------------------------------
@@ -76,7 +88,9 @@ router.get(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
       const progress =
         await getUserCourseProgress(
@@ -100,7 +114,9 @@ router.post(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
       const {
         lessonStepId,
@@ -124,20 +140,20 @@ router.post(
   },
 );
 
-/*
- * This mirrors the resetProgress()
- * capability of the current frontend.
+/**
+ * Development/testing utility.
  *
- * It is not currently exposed by the UI,
- * but keeping it here is useful for
- * development/testing.
+ * It is intentionally not exposed by the
+ * current UI.
  */
 router.post(
   "/progress/reset",
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
       const progress =
         await resetUserCourseProgress(
@@ -165,10 +181,13 @@ router.get(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
-      const { quizStepId } =
-        req.params;
+      const {
+        quizStepId,
+      } = req.params;
 
       const quiz =
         await getLessonQuiz(
@@ -193,10 +212,13 @@ router.post(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
-      const { quizStepId } =
-        req.params;
+      const {
+        quizStepId,
+      } = req.params;
 
       const {
         questionId,
@@ -209,10 +231,12 @@ router.post(
         typeof selectedOptionId !==
           "string"
       ) {
-        return res.status(400).json({
-          message:
-            "questionId and selectedOptionId are required.",
-        });
+        return res
+          .status(400)
+          .json({
+            message:
+              "questionId and selectedOptionId are required.",
+          });
       }
 
       const result =
@@ -240,19 +264,29 @@ router.post(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
-      const { quizStepId } =
-        req.params;
+      const {
+        quizStepId,
+      } = req.params;
 
-      const { answers } =
-        req.body ?? {};
+      const {
+        answers,
+      } = req.body ?? {};
 
-      if (!Array.isArray(answers)) {
-        return res.status(400).json({
-          message:
-            "answers must be an array.",
-        });
+      if (
+        !Array.isArray(
+          answers,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "answers must be an array.",
+          });
       }
 
       const validAnswers =
@@ -266,10 +300,12 @@ router.post(
         );
 
       if (!validAnswers) {
-        return res.status(400).json({
-          message:
-            "Each answer must contain questionId and selectedOptionId.",
-        });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Each answer must contain questionId and selectedOptionId.",
+          });
       }
 
       const progress =
@@ -300,7 +336,9 @@ router.post(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
       const {
         finalTestStepId,
@@ -329,10 +367,13 @@ router.get(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
-      const { attemptId } =
-        req.params;
+      const {
+        attemptId,
+      } = req.params;
 
       const attempt =
         await getFinalTestAttempt(
@@ -357,10 +398,13 @@ router.post(
   async (req, res) => {
     try {
       const userId =
-        getAuthenticatedUserId(req);
+        getAuthenticatedUserId(
+          req,
+        );
 
-      const { attemptId } =
-        req.params;
+      const {
+        attemptId,
+      } = req.params;
 
       const {
         questionId,
@@ -373,10 +417,12 @@ router.post(
         typeof selectedOptionId !==
           "string"
       ) {
-        return res.status(400).json({
-          message:
-            "questionId and selectedOptionId are required.",
-        });
+        return res
+          .status(400)
+          .json({
+            message:
+              "questionId and selectedOptionId are required.",
+          });
       }
 
       const result =
@@ -387,8 +433,25 @@ router.post(
           selectedOptionId,
         );
 
+      /*
+       * A terminal final-test answer changes
+       * canonical Course progress.
+       *
+       * Return that new progress in the same
+       * response so the frontend does not need
+       * a second GET /course/progress request.
+       */
+      const progress =
+        result.attempt.status ===
+        "in-progress"
+          ? null
+          : await getUserCourseProgress(
+              userId,
+            );
+
       return res.json({
         result,
+        progress,
       });
     } catch (error) {
       return handleCourseError(
