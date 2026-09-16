@@ -87,7 +87,7 @@ import c4Level4Image from "../../../../../assets/theory/section-4/services/c4/le
 export const c1aServiceBlock = {
   id: "cooling-service-c1a",
   type: "service",
-  serviceCode: "C1a",
+  serviceCode: "C-1a",
   title: "Cooling Emission Control",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -194,7 +194,7 @@ export const c1aServiceBlock = {
 export const c1bServiceBlock = {
   id: "cooling-service-c1b",
   type: "service",
-  serviceCode: "C1b",
+  serviceCode: "C-1b",
   title: "Emission Control for TABS — Cooling Mode",
   catalogue: "catalogue-b",
   applicability:
@@ -279,7 +279,7 @@ export const c1bServiceBlock = {
 export const c1cServiceBlock = {
   id: "cooling-service-c1c",
   type: "service",
-  serviceCode: "C1c",
+  serviceCode: "C-1c",
   title:
     "Control of Distribution-Network Chilled-Water Temperature (Supply or Return)",
   catalogue: "catalogue-b",
@@ -354,7 +354,7 @@ export const c1cServiceBlock = {
 export const c1dServiceBlock = {
   id: "cooling-service-c1d",
   type: "service",
-  serviceCode: "C1d",
+  serviceCode: "C-1d",
   title: "Control of Distribution Pumps in Networks",
   catalogue: "catalogue-b",
   applicability:
@@ -455,7 +455,7 @@ export const c1dServiceBlock = {
 export const c1fServiceBlock = {
   id: "cooling-service-c1f",
   type: "service",
-  serviceCode: "C1f",
+  serviceCode: "C-1f",
   title: "Interlock: Avoiding Simultaneous Heating and Cooling in the Same Room",
   catalogue: "catalogue-b",
   applicability:
@@ -526,7 +526,7 @@ export const c1fServiceBlock = {
 export const c1gServiceBlock = {
   id: "cooling-service-c1g",
   type: "service",
-  serviceCode: "C1g",
+  serviceCode: "C-1g",
   title: "Control of Thermal Energy Storage (TES) Operation",
   catalogue: "catalogue-b",
   applicability:
@@ -605,7 +605,7 @@ export const c1gServiceBlock = {
 export const c2aServiceBlock = {
   id: "cooling-service-c2a",
   type: "service",
-  serviceCode: "C2a",
+  serviceCode: "C-2a",
   title: "Generator Control for Cooling",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -693,7 +693,7 @@ export const c2aServiceBlock = {
 export const c2bServiceBlock = {
   id: "cooling-service-c2b",
   type: "service",
-  serviceCode: "C2b",
+  serviceCode: "C-2b",
   title: "Sequencing of Different Cooling Generators",
   catalogue: "catalogue-b",
   applicability:
@@ -795,7 +795,7 @@ export const c2bServiceBlock = {
 export const c3ServiceBlock = {
   id: "cooling-service-c3",
   type: "service",
-  serviceCode: "C3",
+  serviceCode: "C-3",
   title: "Provision of Information Regarding Cooling-System Performance",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -893,7 +893,7 @@ export const c3ServiceBlock = {
 export const c4ServiceBlock = {
   id: "cooling-service-c4",
   type: "service",
-  serviceCode: "C4",
+  serviceCode: "C-4",
   title: "Flexibility and Interaction with the Electricity Grid",
   catalogue: "catalogues-a-and-b",
   purpose:

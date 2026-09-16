@@ -765,6 +765,7 @@ export const startFinalTest =
      *
      * floor(totalQuestions × 0.20)
      */
+    
     const allowedMistakes =
       Math.floor(
         questions.length * 0.2,
@@ -774,33 +775,19 @@ export const startFinalTest =
       shuffleItems(questions);
 
     const attempt =
-      await prisma.finalTestAttempt.create(
-        {
+      await prisma.finalTestAttempt.create({
           data: {
             userId,
-
-            finalTestStepId:
-              step.id,
-
+            finalTestStepId: step.id,
             allowedMistakes,
-
             questions: {
               create:
                 shuffledQuestions.map(
-                  (
-                    question,
-                    index,
-                  ) => ({
+                  (question, index) => ({
                     questionId:
                       question.id,
-
-                    /*
-                     * Position is 1-based,
-                     * matching the UI.
-                     */
                     position:
                       index + 1,
-
                     optionOrder:
                       shuffleItems(
                         question.options,

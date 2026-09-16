@@ -120,8 +120,7 @@ const DashboardPage = () => {
           <div className="mt-8 min-w-0">
             <AchievementsRow
               achievements={
-                dashboard
-                  .achievements
+                dashboard.achievements
               }
             />
           </div>

@@ -53,7 +53,7 @@ import de4Level4Image from "../../../../../assets/theory/section-8/services/de4/
 export const de1ServiceBlock = {
   id: "dynamic-envelope-service-de1",
   type: "service",
-  serviceCode: "DE1",
+  serviceCode: "DE-1",
   title: "Window Solar Shading Control",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -161,7 +161,7 @@ export const de1ServiceBlock = {
 export const de2ServiceBlock = {
   id: "dynamic-envelope-service-de2",
   type: "service",
-  serviceCode: "DE2",
+  serviceCode: "DE-2",
   title: "Window Open/Closed Control, Combined with HVAC System",
   catalogue: "catalogue-b",
   purpose:
@@ -241,7 +241,7 @@ export const de2ServiceBlock = {
 export const de4ServiceBlock = {
   id: "dynamic-envelope-service-de4",
   type: "service",
-  serviceCode: "DE4",
+  serviceCode: "DE-4",
   title:
     "Reporting Information Regarding Performance of Dynamic Building Envelope Systems",
   catalogue: "catalogues-a-and-b",

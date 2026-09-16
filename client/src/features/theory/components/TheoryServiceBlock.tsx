@@ -67,9 +67,10 @@ const ServiceHeader = ({
     <header>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 max-w-4xl">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700">
-            SRI Service · {block.serviceCode}
-          </p>
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700">
+          SRI Service ·{" "}
+          <span className="normal-case tracking-normal">{block.serviceCode}</span>
+        </p>
 
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-blue-950">
             {block.title}

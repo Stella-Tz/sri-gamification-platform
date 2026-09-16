@@ -192,7 +192,7 @@ const BuildingInformationForm = ({
               )
             }
             inputMode="numeric"
-            placeholder="e.g. 2015"
+            placeholder="e.g. 2014"
             className="h-11 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition-colors duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
           />
         </FormRow>
@@ -236,7 +236,7 @@ const BuildingInformationForm = ({
             inputMode="numeric"
             placeholder={
               buildingState === "renovated"
-                ? "e.g. 2018"
+                ? "e.g. 2023"
                 : "Only required for renovated buildings"
             }
             className="h-11 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition-colors duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 disabled:bg-slate-50 disabled:text-slate-400"
@@ -254,7 +254,7 @@ const BuildingInformationForm = ({
               setFloorArea(event.target.value)
             }
             inputMode="decimal"
-            placeholder="e.g. 12450"
+            placeholder="e.g. 12500"
             className="h-11 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition-colors duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
           />
         </FormRow>

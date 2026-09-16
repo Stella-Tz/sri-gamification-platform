@@ -1267,6 +1267,7 @@ const buildGuidedImprovementAnalysis =
       candidateServices.length >
       0
     ) {
+      
       const highestServiceImpactScore =
         Math.max(
           ...candidateServices.map(
@@ -1276,9 +1277,9 @@ const buildGuidedImprovementAnalysis =
         );
 
       /*
-       * The authoritative frontend stops after Q2
-       * when every upgradeable service has a
-       * maximum-level impact score of zero.
+       * The analysis stops after Q2 when every 
+       * upgradeable service has a maximum-level 
+       * impact score of zero.
        */
       if (
         highestServiceImpactScore >
@@ -1295,11 +1296,9 @@ const buildGuidedImprovementAnalysis =
           );
 
         /*
-         * Later product decision: these educational
-         * questions are single-choice. If future data
-         * creates a positive tie at the maximum, treat
-         * it as a configuration error rather than
-         * choosing an arbitrary service.
+         * If future data creates a positive tie at the
+         * maximum, treat it as a configuration error rather
+         * than choosing an arbitrary service.
          */
         if (
           highestImpactServices.length !==
@@ -1570,17 +1569,13 @@ const getResolvedContext = ({
    * tables without exposing future answers.
    */
   const impactCriterionResolved =
-    q1Answer?.isCorrect ===
-      true ||
-    progress.currentIndex >
-      0 ||
+    q1Answer?.isCorrect === true ||
+    progress.currentIndex > 0 ||
     progress.completed;
 
   const domainResolved =
-    q2Answer?.isCorrect ===
-      true ||
-    progress.currentIndex >
-      1 ||
+    q2Answer?.isCorrect === true ||
+    progress.currentIndex > 1 ||
     progress.completed;
 
   return {
@@ -1599,20 +1594,11 @@ const getResolvedContext = ({
     candidateServices:
       domainResolved
         ? analysis
-            .candidateServices
-            .map(
+            .candidateServices.map(
               (service) => ({
-                serviceId:
-                  service
-                    .serviceId,
-
-                serviceCode:
-                  service
-                    .serviceCode,
-
-                maxImpactScore:
-                  service
-                    .maxImpactScore,
+                serviceId: service.serviceId,
+                serviceCode: service.serviceCode,
+                maxImpactScore: service.maxImpactScore,
               }),
             )
         : [],

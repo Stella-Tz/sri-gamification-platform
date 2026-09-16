@@ -82,7 +82,7 @@ import mc30Level3Image from "../../../../../assets/theory/section-11/services/mc
 export const mc3ServiceBlock = {
   id: "monitoring-control-service-mc3",
   type: "service",
-  serviceCode: "MC3",
+  serviceCode: "MC-3",
   title: "Run Time Management of HVAC Systems",
   catalogue: "catalogue-b",
   description:
@@ -153,7 +153,7 @@ export const mc3ServiceBlock = {
 export const mc4ServiceBlock = {
   id: "monitoring-control-service-mc4",
   type: "service",
-  serviceCode: "MC4",
+  serviceCode: "MC-4",
   title:
     "Detecting Faults of Technical Building Systems and Providing Support to the Diagnosis of These Faults",
   catalogue: "catalogue-b",
@@ -226,7 +226,7 @@ export const mc4ServiceBlock = {
 export const mc9ServiceBlock = {
   id: "monitoring-control-service-mc9",
   type: "service",
-  serviceCode: "MC9",
+  serviceCode: "MC-9",
   title: "Occupancy Detection: Connected Services",
   catalogue: "catalogue-b",
   description:
@@ -283,7 +283,7 @@ export const mc9ServiceBlock = {
 export const mc13ServiceBlock = {
   id: "monitoring-control-service-mc13",
   type: "service",
-  serviceCode: "MC13",
+  serviceCode: "MC-13",
   title: "Central Reporting of TBS Performance and Energy Use",
   catalogue: "catalogues-a-and-b",
   description:
@@ -355,7 +355,7 @@ export const mc13ServiceBlock = {
 export const mc25ServiceBlock = {
   id: "monitoring-control-service-mc25",
   type: "service",
-  serviceCode: "MC25",
+  serviceCode: "MC-25",
   title: "Smart Grid Integration",
   catalogue: "catalogues-a-and-b",
   description:
@@ -414,7 +414,7 @@ export const mc25ServiceBlock = {
 export const mc28ServiceBlock = {
   id: "monitoring-control-service-mc28",
   type: "service",
-  serviceCode: "MC28",
+  serviceCode: "MC-28",
   title:
     "Reporting Information Regarding Demand Side Management Performance and Operation",
   catalogue: "catalogue-b",
@@ -474,7 +474,7 @@ export const mc28ServiceBlock = {
 export const mc29ServiceBlock = {
   id: "monitoring-control-service-mc29",
   type: "service",
-  serviceCode: "MC29",
+  serviceCode: "MC-29",
   title: "Override of DSM Control",
   catalogue: "catalogue-b",
   description:
@@ -558,7 +558,7 @@ export const mc29ServiceBlock = {
 export const mc30ServiceBlock = {
   id: "monitoring-control-service-mc30",
   type: "service",
-  serviceCode: "MC30",
+  serviceCode: "MC-30",
   title:
     "Single Platform that Allows Automated Control & Coordination Between TBS + Optimization of Energy Flow Based on Occupancy, Weather and Grid Signals",
   catalogue: "catalogues-a-and-b",

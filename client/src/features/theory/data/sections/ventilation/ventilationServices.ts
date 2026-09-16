@@ -68,7 +68,7 @@ import v6Level3Image from "../../../../../assets/theory/section-6/services/v6/le
 export const v1aServiceBlock = {
   id: "ventilation-service-v1a",
   type: "service",
-  serviceCode: "V1a",
+  serviceCode: "V-1a",
   title: "Supply Air Flow Control at Room Level",
   catalogue: "catalogues-a-and-b",
   purpose:
@@ -155,7 +155,7 @@ export const v1aServiceBlock = {
 export const v1cServiceBlock = {
   id: "ventilation-service-v1c",
   type: "service",
-  serviceCode: "V1c",
+  serviceCode: "V-1c",
   title: "Air Flow or Pressure Control at Air-Handler Level",
   catalogue: "catalogue-b",
   applicability: "Applicable only in the case of mechanical ventilation.",
@@ -249,7 +249,7 @@ export const v1cServiceBlock = {
 export const v2cServiceBlock = {
   id: "ventilation-service-v2c",
   type: "service",
-  serviceCode: "V2c",
+  serviceCode: "V-2c",
   title: "Heat Recovery Control: Prevention of Overheating",
   catalogue: "catalogue-b",
   applicability:
@@ -313,7 +313,7 @@ export const v2cServiceBlock = {
 export const v2dServiceBlock = {
   id: "ventilation-service-v2d",
   type: "service",
-  serviceCode: "V2d",
+  serviceCode: "V-2d",
   title: "Supply Air Temperature Control at Air-Handling-Unit Level",
   catalogue: "catalogue-b",
   applicability:
@@ -388,7 +388,7 @@ export const v2dServiceBlock = {
 export const v3ServiceBlock = {
   id: "ventilation-service-v3",
   type: "service",
-  serviceCode: "V3",
+  serviceCode: "V-3",
   title: "Free Cooling with Mechanical Ventilation System",
   catalogue: "catalogue-b",
   applicability:
@@ -466,7 +466,7 @@ export const v3ServiceBlock = {
 export const v6ServiceBlock = {
   id: "ventilation-service-v6",
   type: "service",
-  serviceCode: "V6",
+  serviceCode: "V-6",
   title: "Reporting Information Regarding Indoor Air Quality",
   catalogue: "catalogues-a-and-b",
   purpose:

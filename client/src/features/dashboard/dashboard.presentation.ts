@@ -187,6 +187,19 @@ export const buildDashboardViewModel = (
             courseProgress,
           );
 
+        const theoryStatus:
+          DashboardViewModel[
+            "theoryProgress"
+          ]["status"] =
+          courseProgress
+            .completedSteps ===
+            0
+            ? "not-started"
+            : courseProgress
+                .isCourseCompleted
+              ? "completed"
+              : "in-progress";
+
         const caseStudyProgress =
           caseStudy.progress;
 
@@ -212,19 +225,6 @@ export const buildDashboardViewModel = (
             null &&
           caseStudyJourneyStatus !==
             "not-started";
-
-        const theoryStatus:
-          DashboardViewModel[
-            "theoryProgress"
-          ]["status"] =
-          courseProgress
-            .completedSteps ===
-            0
-            ? "not-started"
-            : courseProgress
-                .isCourseCompleted
-              ? "completed"
-              : "in-progress";
 
         /*
          * This status belongs to the current
@@ -372,20 +372,16 @@ export const buildDashboardViewModel = (
               ? {
                   state:
                     "start-learning",
-
                   path:
                     currentCourseStepPath,
-
                   milestone:
                     learningMilestone,
                 }
               : {
                   state:
                     "continue-learning",
-
                   path:
                     currentCourseStepPath,
-
                   milestone:
                     learningMilestone,
                 };
@@ -397,10 +393,8 @@ export const buildDashboardViewModel = (
               nextAction = {
                 state:
                   "start-case-study",
-
                 path:
                   ROUTES.caseStudy,
-
                 milestone:
                   null,
               };
@@ -410,10 +404,8 @@ export const buildDashboardViewModel = (
               nextAction = {
                 state:
                   "continue-case-study",
-
                 path:
                   currentCaseStudyPath,
-
                 milestone:
                   null,
               };
@@ -423,10 +415,8 @@ export const buildDashboardViewModel = (
               nextAction = {
                 state:
                   "resume-practice",
-
                 path:
                   currentCaseStudyPath,
-
                 milestone:
                   null,
               };
@@ -436,10 +426,8 @@ export const buildDashboardViewModel = (
               nextAction = {
                 state:
                   "review-case-study",
-
                 path:
                   OFFICIAL_SIMULATION_RESULTS_PATH,
-
                 milestone:
                   null,
               };
@@ -450,10 +438,8 @@ export const buildDashboardViewModel = (
               nextAction = {
                 state:
                   "continue-learning",
-
                 path:
                   ROUTES.courses,
-
                 milestone:
                   learningMilestone,
               };
@@ -681,12 +667,6 @@ export const buildDashboardViewModel = (
                     .upgradedService
                     .serviceCode,
 
-                /*
-                 * shortTitle was duplicate
-                 * presentation data. The backend
-                 * canonical serviceName is used
-                 * directly.
-                 */
                 upgradedServiceTitle:
                   officialSimulationResult
                     .upgradedService

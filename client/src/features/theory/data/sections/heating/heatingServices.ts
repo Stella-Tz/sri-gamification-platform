@@ -69,7 +69,7 @@ import h3Level4Image from "../../../../../assets/theory/section-3/services/h3/le
 export const h1aServiceBlock = {
   id: "heating-service-h1a",
   type: "service",
-  serviceCode: "H1a",
+  serviceCode: "H-1a",
   title: "Heat Emission Control",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -186,7 +186,7 @@ export const h1aServiceBlock = {
 export const h1bServiceBlock = {
   id: "heating-service-h1b",
   type: "service",
-  serviceCode: "H1b",
+  serviceCode: "H-1b",
   title: "Emission Control for TABS — Heating Mode",
   catalogue: "catalogue-b",
   applicability:
@@ -276,7 +276,7 @@ export const h1bServiceBlock = {
 export const h1cCatalogueBServiceBlock = {
   id: "heating-service-h1c-catalogue-b",
   type: "service",
-  serviceCode: "H1c",
+  serviceCode: "H-1c",
   title: "Control of Distribution-Fluid Temperature",
   catalogue: "catalogue-b",
   description:
@@ -350,7 +350,7 @@ export const h1cCatalogueBServiceBlock = {
 export const h1dServiceBlock = {
   id: "heating-service-h1d",
   type: "service",
-  serviceCode: "H1d",
+  serviceCode: "H-1d",
   title: "Control of Distribution Pumps in Networks",
   catalogue: "catalogue-b",
   description:
@@ -450,7 +450,7 @@ export const h1dServiceBlock = {
 export const h2aServiceBlock = {
   id: "heating-service-h2a",
   type: "service",
-  serviceCode: "H2a",
+  serviceCode: "H-2a",
   title: "Heat Generator Control — All Except Heat Pumps",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -524,7 +524,7 @@ export const h2aServiceBlock = {
 export const h2bServiceBlock = {
   id: "heating-service-h2b",
   type: "service",
-  serviceCode: "H2b",
+  serviceCode: "H-2b",
   title: "Heat Generator Control for Heat Pumps",
   catalogue: "catalogues-a-and-b",
   applicability:
@@ -613,7 +613,7 @@ export const h2bServiceBlock = {
 export const h2dServiceBlock = {
   id: "heating-service-h2d",
   type: "service",
-  serviceCode: "H2d",
+  serviceCode: "H-2d",
   title: "Sequencing of Different Heat Generators",
   catalogue: "catalogue-b",
   applicability:
@@ -715,7 +715,7 @@ export const h2dServiceBlock = {
 export const h1cCatalogueAServiceBlock = {
   id: "heating-service-h1c-catalogue-a",
   type: "service",
-  serviceCode: "H1c",
+  serviceCode: "H-1c",
   title: "Storage and Shifting of Thermal Energy",
   catalogue: "catalogue-a",
   applicability:
@@ -786,7 +786,7 @@ export const h1cCatalogueAServiceBlock = {
 export const h1fServiceBlock = {
   id: "heating-service-h1f",
   type: "service",
-  serviceCode: "H1f",
+  serviceCode: "H-1f",
   title: "Thermal Energy Storage for Building Heating — Excluding TABS",
   catalogue: "catalogue-b",
   applicability:
@@ -865,7 +865,7 @@ export const h1fServiceBlock = {
 export const h4ServiceBlock = {
   id: "heating-service-h4",
   type: "service",
-  serviceCode: "H4",
+  serviceCode: "H-4",
   title: "Flexibility and Interaction with the Electricity Grid",
   catalogue: "catalogue-b",
   purpose:
@@ -961,7 +961,7 @@ export const h4ServiceBlock = {
 export const h3ServiceBlock = {
   id: "heating-service-h3",
   type: "service",
-  serviceCode: "H3",
+  serviceCode: "H-3",
   title: "Provision of Information Regarding Heating-System Performance",
   catalogue: "catalogues-a-and-b",
   purpose:

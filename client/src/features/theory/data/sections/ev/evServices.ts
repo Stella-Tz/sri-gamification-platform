@@ -52,7 +52,7 @@ import ev17Level2Image from "../../../../../assets/theory/section-10/services/ev
 export const ev15ServiceBlock = {
   id: "electric-vehicle-charging-service-ev15",
   type: "service",
-  serviceCode: "EV15",
+  serviceCode: "EV-15",
   title: "EV Charging Capacity",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only when parking spaces are available on site.",
@@ -137,7 +137,7 @@ export const ev15ServiceBlock = {
 export const ev16ServiceBlock = {
   id: "electric-vehicle-charging-service-ev16",
   type: "service",
-  serviceCode: "EV16",
+  serviceCode: "EV-16",
   title: "EV Charging Grid Balancing",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only when EV charging is available on site.",
@@ -200,7 +200,7 @@ export const ev16ServiceBlock = {
 export const ev17ServiceBlock = {
   id: "electric-vehicle-charging-service-ev17",
   type: "service",
-  serviceCode: "EV17",
+  serviceCode: "EV-17",
   title: "EV Charging Information and Connectivity",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only when EV charging is available on site.",

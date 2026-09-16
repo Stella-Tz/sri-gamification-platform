@@ -75,7 +75,7 @@ import e12Level4Image from "../../../../../assets/theory/section-9/services/e12/
 export const e2ServiceBlock = {
   id: "electricity-service-e2",
   type: "service",
-  serviceCode: "E2",
+  serviceCode: "E-2",
   title: "Reporting Information Regarding Local Electricity Generation",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only in case of local energy generation.",
@@ -161,7 +161,7 @@ export const e2ServiceBlock = {
 export const e3ServiceBlock = {
   id: "electricity-service-e3",
   type: "service",
-  serviceCode: "E3",
+  serviceCode: "E-3",
   title: "Storage of (Locally Generated) Electricity",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only in case of local energy generation.",
@@ -247,7 +247,7 @@ export const e3ServiceBlock = {
 export const e4ServiceBlock = {
   id: "electricity-service-e4",
   type: "service",
-  serviceCode: "E4",
+  serviceCode: "E-4",
   title: "Optimizing Self-Consumption of Locally Generated Electricity",
   catalogue: "catalogue-b",
   applicability: "Applicable only in case of local energy generation.",
@@ -323,7 +323,7 @@ export const e4ServiceBlock = {
 export const e5ServiceBlock = {
   id: "electricity-service-e5",
   type: "service",
-  serviceCode: "E5",
+  serviceCode: "E-5",
   title: "Control of Combined Heat and Power Plant (CHP)",
   catalogue: "catalogue-b",
   applicability: "Applicable only in case of CHP.",
@@ -386,7 +386,7 @@ export const e5ServiceBlock = {
 export const e8ServiceBlock = {
   id: "electricity-service-e8",
   type: "service",
-  serviceCode: "E8",
+  serviceCode: "E-8",
   title: "Support of (Micro)grid Operation Modes",
   catalogue: "catalogue-b",
   applicability: "Applicable only in case of local energy storage.",
@@ -461,7 +461,7 @@ export const e8ServiceBlock = {
 export const e11ServiceBlock = {
   id: "electricity-service-e11",
   type: "service",
-  serviceCode: "E11",
+  serviceCode: "E-11",
   title: "Reporting Information Regarding Energy Storage",
   catalogue: "catalogues-a-and-b",
   applicability: "Applicable only in case of local energy storage.",
@@ -549,7 +549,7 @@ export const e11ServiceBlock = {
 export const e12ServiceBlock = {
   id: "electricity-service-e12",
   type: "service",
-  serviceCode: "E12",
+  serviceCode: "E-12",
   title: "Reporting Information Regarding Electricity Consumption",
   catalogue: "catalogues-a-and-b",
   description:

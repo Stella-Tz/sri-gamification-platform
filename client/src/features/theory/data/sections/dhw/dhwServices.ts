@@ -71,7 +71,7 @@ import dhw3Level4Image from "../../../../../assets/theory/section-5/services/dhw
 export const dhw1aServiceBlock = {
   id: "dhw-service-dhw1a",
   type: "service",
-  serviceCode: "DHW1a",
+  serviceCode: "DHW-1a",
   title:
     "Control of DHW Storage Charging with Direct Electric Heating or an Integrated Electric Heat Pump",
   catalogue: "catalogues-a-and-b",
@@ -156,7 +156,7 @@ export const dhw1aServiceBlock = {
 export const dhw1bCatalogueAServiceBlock = {
   id: "dhw-service-dhw1b-catalogue-a",
   type: "service",
-  serviceCode: "DHW1b",
+  serviceCode: "DHW-1b",
   title: "Control of DHW Storage Charging",
   catalogue: "catalogue-a",
   applicability:
@@ -230,7 +230,7 @@ export const dhw1bCatalogueAServiceBlock = {
 export const dhw1bCatalogueBServiceBlock = {
   id: "dhw-service-dhw1b-catalogue-b",
   type: "service",
-  serviceCode: "DHW1b",
+  serviceCode: "DHW-1b",
   title: "Control of DHW Storage Charging Using Hot-Water Generation",
   catalogue: "catalogue-b",
   applicability:
@@ -314,7 +314,7 @@ export const dhw1bCatalogueBServiceBlock = {
 export const dhw1dServiceBlock = {
   id: "dhw-service-dhw1d",
   type: "service",
-  serviceCode: "DHW1d",
+  serviceCode: "DHW-1d",
   title:
     "Control of DHW Storage Charging with a Solar Collector and Supplementary Heat Generation",
   catalogue: "catalogue-b",
@@ -397,7 +397,7 @@ export const dhw1dServiceBlock = {
 export const dhw2bServiceBlock = {
   id: "dhw-service-dhw2b",
   type: "service",
-  serviceCode: "DHW2b",
+  serviceCode: "DHW-2b",
   title: "Sequencing in Case of Different Domestic Hot Water Generators",
   catalogue: "catalogue-b",
   description:
@@ -497,7 +497,7 @@ export const dhw2bServiceBlock = {
 export const dhw3ServiceBlock = {
   id: "dhw-service-dhw3",
   type: "service",
-  serviceCode: "DHW3",
+  serviceCode: "DHW-3",
   title: "Report Information Regarding Domestic Hot Water Performance",
   catalogue: "catalogues-a-and-b",
   purpose:

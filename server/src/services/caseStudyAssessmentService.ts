@@ -1859,13 +1859,6 @@ export const validateAssessmentServiceAnswer =
       );
     }
 
-    /*
-     * The browser no longer calculates
-     * the baseline SRI result.
-     *
-     * All canonical methodology data and
-     * user answers are read from PostgreSQL.
-     */
     const result =
       await calculateSriBaselineResult(
         userId,

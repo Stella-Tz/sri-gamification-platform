@@ -696,7 +696,6 @@ export const getCaseStudyResults =
     const isCorrect =
       areAnswersEqual(
         selectedAnswers,
-
         currentQuestion
           .correctOptionValues,
       );
@@ -704,7 +703,6 @@ export const getCaseStudyResults =
     const existingAnswer =
       getAnswerForQuestion(
         investigation,
-
         questionId,
       );
 
@@ -712,16 +710,13 @@ export const getCaseStudyResults =
       ResultsInvestigationAnswer =
       {
         questionId,
-
         selectedAnswers: [
           ...selectedAnswers,
         ],
-
         feedback:
           isCorrect
             ? "correct"
             : "wrong",
-
         attempts:
           (
             existingAnswer
@@ -734,25 +729,17 @@ export const getCaseStudyResults =
       ResultsInvestigationProgress =
       {
         ...investigation,
-
         answers:
           upsertAnswer(
-            investigation
-              .answers,
-
+            investigation.answers,
             nextAnswer,
           ),
-
-        completed:
-          false,
+        completed: false,
       };
 
     await saveInvestigationProgress({
-      attemptId:
-        attempt.id,
-
-      investigation:
-        nextProgress,
+      attemptId: attempt.id,
+      investigation: nextProgress,
     });
 
     return {

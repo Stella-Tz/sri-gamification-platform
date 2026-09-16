@@ -47,7 +47,7 @@ import l2Level4Image from "../../../../../assets/theory/section-7/services/l2/le
 export const l1aServiceBlock = {
   id: "lighting-service-l1a",
   type: "service",
-  serviceCode: "L1a",
+  serviceCode: "L-1a",
   title: "Occupancy Control for Indoor Lighting",
   catalogue: "catalogues-a-and-b",
   purpose:
@@ -130,7 +130,7 @@ export const l1aServiceBlock = {
 export const l2ServiceBlock = {
   id: "lighting-service-l2",
   type: "service",
-  serviceCode: "L2",
+  serviceCode: "L-2",
   title: "Control Artificial Lighting Power Based on Daylight Levels",
   catalogue: "catalogue-b",
   purpose:

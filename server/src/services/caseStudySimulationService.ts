@@ -430,7 +430,6 @@ export const runCaseStudySimulation =
 
     /*
      * AFTER:
-     *
      * Only the selected service is overridden,
      * entirely in memory:
      *
@@ -566,9 +565,7 @@ export const runCaseStudySimulation =
             },
           });
 
-        if (
-          becomesOfficial
-        ) {
+        if (becomesOfficial) {
           await tx
             .userCaseStudyProgress
             .update({
