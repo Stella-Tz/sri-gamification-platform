@@ -115,9 +115,9 @@ export const h1aServiceBlock = {
           "Central automatic heating control serving several rooms without individual room control.",
       },
       examples: [
-        "A central control that regulates a hot-water heating installation as a whole.",
-        "A central electronic controller for a hot-water heating installation.",
-        "A central electronic controller for an electric heating installation.",
+        "A hot-water heating installation with thermostatic control at installation level.",
+        "A hot-water heating installation with a non-communicating electronic controller.",
+        "An electric heating installation with a non-communicating electronic controller.",
       ],
     },
     {
@@ -227,7 +227,7 @@ export const h1bServiceBlock = {
           "Central automatic control of a TABS heating zone.",
       },
       examples: [
-        "Supply-water temperature control based on the outside temperature.",
+        "Supply-water temperature control with outside-temperature compensation.",
       ],
     },
     {
@@ -257,8 +257,8 @@ export const h1bServiceBlock = {
           "Advanced TABS control with intermittent operation or room-temperature feedback.",
       },
       examples: [
-        "Supply-water temperature control based on the outside temperature combined with intermittent circulation-pump operation.",
-        "Supply-water temperature control based on the outside temperature combined with room-temperature feedback.",
+        "Supply-water temperature control with outside-temperature compensation combined with intermittent circulation-pump operation.",
+        "Supply-water temperature control with outside-temperature compensation combined with room-temperature feedback.",
       ],
     },
   ],
@@ -319,7 +319,7 @@ export const h1cCatalogueBServiceBlock = {
           "Distribution-fluid temperature adjusted according to the outside temperature.",
       },
       examples: [
-        "An electronic controller that adjusts the distribution temperature using the measured outside temperature.",
+        "A non-communicating electronic controller that adjusts the distribution temperature according to the measured outside temperature.",
       ],
     },
     {
@@ -335,7 +335,7 @@ export const h1cCatalogueBServiceBlock = {
           "Demand-based distribution-fluid temperature control using indoor-temperature measurements.",
       },
       examples: [
-        "A controller that adjusts the distribution temperature using indoor-temperature measurements.",
+        "A non-communicating electronic controller that adjusts the distribution temperature using indoor-temperature measurements.",
         "A controller that uses indoor-temperature measurements to select comfort or economy operation.",
       ],
     },

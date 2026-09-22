@@ -44,6 +44,9 @@ export type CaseStudyAssessmentServiceData = {
     id: string;
     level: number;
     officialDescription: string;
+    
+    impactCriteria:
+       ImpactCriterionName[];
   }[];
 };
 

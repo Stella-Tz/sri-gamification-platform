@@ -5,6 +5,7 @@ import type {
 } from "../../assessment/caseStudyAssessment.presentation";
 
 import type {
+  ImpactCriterionName,
   ServiceAnswer,
 } from "../../types/caseStudy.types";
 
@@ -142,12 +143,136 @@ const ServiceAssessmentWorkspace = ({
     [];
 
   /*
-   * Main SRI impacts now come directly
-   * from the backend Assessment DTO.
-   */
-  const impactCriteria =
+  * SRI impact criteria are presented
+  * dynamically according to the currently
+  * selected functionality level(s).
+  *
+  * No selected level:
+  * show every criterion that can receive
+  * a non-zero impact score for this service.
+  *
+  * One selected level:
+  * show only that level's non-zero criteria.
+  *
+  * Two selected levels:
+  * take the functionality share into account
+  * and show the union of the levels that
+  * actually participate in the assessment.
+  */
+  const primaryLevel =
     selectedService
-      .impactCriteria;
+      .functionalityLevels
+      .find(
+        (level) =>
+         level.id ===
+         answer.selectedLevelId,
+      ) ??
+    null;
+   
+  const additionalLevel =
+    selectedService
+      .functionalityLevels
+      .find(
+       (level) =>
+         level.id ===
+         answer.additionalLevelId,
+      ) ??
+    null;
+   
+  const primaryImpactCriteria =
+    primaryLevel
+      ?.impactCriteria ??
+    [];
+   
+  const additionalImpactCriteria =
+     additionalLevel
+      ?.impactCriteria ??
+    [];
+   
+  const impactCriteria = (() => {
+   /*
+    * Nothing has been selected yet.
+    *
+    * Preserve the previous behaviour:
+    * show all non-zero criteria that may
+    * be affected by any functionality level.
+    */
+    if (
+      !primaryLevel &&
+      !additionalLevel
+    ) {
+     return selectedService
+       .impactCriteria;
+    }
+   
+    /*
+    * Additional level exists without a
+    * valid main level.
+    */
+   if (
+     !primaryLevel &&
+     additionalLevel
+   ) {
+     return additionalImpactCriteria;
+   }
+   
+   /*
+    * Main level exists without an
+    * additional level.
+    */
+   if (
+     primaryLevel &&
+     !additionalLevel
+   ) {
+     return primaryImpactCriteria;
+   }
+   
+   /*
+    * At this point both levels exist.
+    *
+    * A 100% main share means that the
+    * additional level contributes nothing.
+    */
+   if (
+     answer.share >= 100
+   ) {
+     return primaryImpactCriteria;
+   }
+   
+   /*
+    * A 0% main share means that only the
+    * additional level contributes.
+    */
+   if (
+     answer.share <= 0
+   ) {
+     return additionalImpactCriteria;
+   }
+   
+   /*
+    * Both levels cover part of the building.
+    *
+    * Use the service-wide criterion list as
+    * the ordering reference so the merged
+    * result stays in canonical SRI order.
+    */
+   const selectedCriteria =
+     new Set<
+       ImpactCriterionName
+     >([
+       ...primaryImpactCriteria,
+       ...additionalImpactCriteria,
+     ]);
+   
+   return selectedService
+     .impactCriteria
+     .filter(
+       (criterion) =>
+         selectedCriteria.has(
+           criterion,
+         ),
+     );
+ })();
 
   const methodologyNote =
     selectedService

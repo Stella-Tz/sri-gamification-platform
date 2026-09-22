@@ -11,6 +11,14 @@ import {
   dashboardApi,
 } from "../../../api/dashboardApi";
 
+import type {
+  CaseStudyProgress,
+} from "../../caseStudy/progress/caseStudyProgress.types";
+
+import type {
+  UserCourseProgress,
+} from "../../course/course.types";
+
 import {
   buildDashboardViewModel,
 } from "../dashboard.presentation";
@@ -27,7 +35,13 @@ const getErrorMessage = (
     : "Failed to load dashboard data.";
 };
 
-export const useDashboard = () => {
+export const useDashboard = (
+  courseProgress:
+    UserCourseProgress,
+
+  caseStudyProgress:
+    CaseStudyProgress | null,
+) => {
   const [
     data,
     setData,
@@ -107,12 +121,19 @@ export const useDashboard = () => {
   const dashboard =
     useMemo(
       () =>
-        data
+        data &&
+        caseStudyProgress
           ? buildDashboardViewModel(
               data,
+              courseProgress,
+              caseStudyProgress,
             )
           : null,
-      [data],
+      [
+        data,
+        courseProgress,
+        caseStudyProgress,
+      ],
     );
 
   return {

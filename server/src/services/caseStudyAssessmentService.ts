@@ -67,6 +67,9 @@ export type CaseStudyAssessmentServiceDto = {
     id: string;
     level: number;
     officialDescription: string;
+  
+    impactCriteria:
+      string[];
   }[];
 };
 
@@ -482,20 +485,53 @@ export const getCaseStudyAssessment =
                 .scenarioEvidence,
 
             functionalityLevels:
-              method.levels.map(
-                (level) => ({
-                  id:
-                    level
-                      .sourceLevelKey,
-
-                  level:
-                    level.level,
-
-                  officialDescription:
-                    level
-                      .officialDescription,
-                }),
-              ),
+             method.levels.map(
+              (level) => ({
+                 id:
+                   level
+                    .sourceLevelKey,
+              
+                 level:
+                  level.level,
+              
+                 officialDescription:
+                   level
+                     .officialDescription,
+              
+                 impactCriteria:
+                  [
+                     ...level
+                      .impactScores,
+                  ]
+                    .filter(
+                       (
+                         impactScore,
+                      ) =>
+                        impactScore
+                           .score !== 0,
+                    )
+                    .sort(
+                      (
+                        left,
+                         right,
+                       ) =>
+                        left
+                          .impactCriterion
+                          .order -
+                         right
+                          .impactCriterion
+                          .order,
+                    )
+                    .map(
+                      (
+                         impactScore,
+                      ) =>
+                        impactScore
+                          .impactCriterion
+                          .name,
+                    ),
+               }),
+             ),
           };
         },
       );

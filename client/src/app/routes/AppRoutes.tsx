@@ -15,9 +15,6 @@ import {
   THEORY_ROUTES,
 } from "../../constants/routes";
 
-import {
-  CourseProgressProvider,
-} from "../providers/CourseProgressProvider";
 
 import CaseStudyPage from "../../pages/CaseStudyPage";
 import CaseStudyAssessmentPage from "../../pages/CaseStudyAssessmentPage";
@@ -80,9 +77,7 @@ const AppRoutes = () => {
       >
         <Route
           element={
-            <CourseProgressProvider>
-              <AppLayout />
-            </CourseProgressProvider>
+            <AppLayout />
           }
         >
             <Route

@@ -17,6 +17,10 @@ import type {
 } from "../setup/caseStudySetup.types";
 
 import type {
+  CaseStudyProgress,
+} from "../progress/caseStudyProgress.types";
+
+import type {
   BuildingState,
   BuildingType,
   BuildingUsage,
@@ -42,6 +46,11 @@ type UseCaseStudySetupParams = {
   initialAnswers?:
     | SetupAnswers
     | null;
+
+  onProgressChange?: (
+    progress:
+      CaseStudyProgress,
+  ) => void;
 };
 
 const getErrorMessage = (
@@ -56,6 +65,7 @@ const getErrorMessage = (
 export const useCaseStudySetup = ({
   domains,
   initialAnswers = null,
+  onProgressChange,
 }: UseCaseStudySetupParams) => {
   const initialBuildingInformation =
     initialAnswers
@@ -522,10 +532,15 @@ export const useCaseStudySetup = ({
       saveQueueRef.current
         .then(
           async () => {
-            await caseStudyApi
-              .saveSetupDraft(
-                answersSnapshot,
-              );
+            const nextProgress =
+              await caseStudyApi
+                .saveSetupDraft(
+                  answersSnapshot,
+                );
+
+            onProgressChange?.(
+              nextProgress,
+            );
           },
         )
         .catch(
@@ -542,7 +557,10 @@ export const useCaseStudySetup = ({
             );
           },
         );
-  }, [answers]);
+  }, [
+    answers,
+    onProgressChange,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Complete Setup

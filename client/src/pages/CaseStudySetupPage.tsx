@@ -191,14 +191,17 @@ const CaseStudySetupContent = ({
       null,
     );
 
-  const setup =
-  useCaseStudySetup({
-    domains: [
-      ...sriTechnicalDomainNames,
-    ],
-
-    initialAnswers,
-  });
+    const setup =
+      useCaseStudySetup({
+        domains: [
+          ...sriTechnicalDomainNames,
+        ],
+    
+        initialAnswers,
+    
+        onProgressChange:
+          applyProgress,
+      });
 
   useLayoutEffect(() => {
     if (

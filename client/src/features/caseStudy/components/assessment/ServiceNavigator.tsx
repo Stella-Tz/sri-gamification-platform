@@ -63,7 +63,6 @@ const ServiceNavigator = ({
           lg:grid
           lg:grid-cols-5
           lg:overflow-visible
-          lg:pb-0
           lg:pr-0
         "
       >

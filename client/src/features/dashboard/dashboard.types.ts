@@ -9,10 +9,6 @@ import type {
 } from "../course/course.types";
 
 import type {
-  CaseStudyProgress,
-} from "../caseStudy/progress/caseStudyProgress.types";
-
-import type {
   CaseStudyResultsPublicResult,
 } from "../caseStudy/results/caseStudyResults.types";
 
@@ -20,16 +16,9 @@ import type {
   CaseStudySimulationResult,
 } from "../caseStudy/simulation/caseStudySimulation.types";
 
-import type {
-  UserCourseProgress,
-} from "../course/course.types";
-
 export type DashboardDataDto = {
   user:
     AuthUser;
-
-  courseProgress:
-    UserCourseProgress;
 
   caseStudy: {
     id:
@@ -39,9 +28,6 @@ export type DashboardDataDto = {
     title:
       | string
       | null;
-
-    progress:
-      CaseStudyProgress;
 
     activeBaselineResult:
       | CaseStudyResultsPublicResult

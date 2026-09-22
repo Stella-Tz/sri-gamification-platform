@@ -15,6 +15,10 @@ import {
   useCaseStudyProgress,
 } from "../app/providers/CaseStudyProgressProvider";
 
+import {
+  useCourseProgress,
+} from "../app/providers/CourseProgressProvider";
+
 import AchievementsRow from "../features/dashboard/components/AchievementsRow";
 
 import AssessmentProgressCard from "../features/dashboard/components/AssessmentProgressCard";
@@ -37,19 +41,47 @@ const OFFICIAL_SIMULATION_RESULTS_PATH =
 const DashboardPage = () => {
   const navigate =
     useNavigate();
-
+  
   const {
-    dashboard,
-    isLoading,
-    error,
+    progress:
+      courseProgress,
   } =
-    useDashboard();
+    useCourseProgress();
 
   const {
+    progress:
+      caseStudyProgress,
+    isLoading:
+      isCaseStudyProgressLoading,
+    error:
+      caseStudyProgressError,
     startPracticeAgain,
     isStartingPracticeAgain,
   } =
     useCaseStudyProgress();
+
+  const {
+    dashboard,
+    isLoading:
+      isDashboardLoading,
+    error:
+      dashboardError,
+  } =
+    useDashboard(
+      courseProgress,
+      caseStudyProgress,
+    );
+  
+  const isLoading =
+    isDashboardLoading ||
+    (
+      caseStudyProgress === null &&
+      isCaseStudyProgressLoading
+    );
+  
+  const error =
+    dashboardError ??
+    caseStudyProgressError;
 
   const handlePrimaryAction =
     () => {

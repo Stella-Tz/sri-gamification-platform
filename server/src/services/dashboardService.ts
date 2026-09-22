@@ -6,15 +6,9 @@ import type {
 
 import prisma from "../prismaClient.js";
 
-import {
-  getUserCourseProgress,
-  type CourseProgressDto,
-} from "./courseProgressService.js";
 
 import {
   CASE_STUDY_ID,
-  getCaseStudyProgress,
-  type CaseStudyProgressDto,
 } from "./caseStudyService.js";
 
 import {
@@ -41,9 +35,6 @@ export type DashboardDataDto = {
   user:
     DashboardUserDto;
 
-  courseProgress:
-    CourseProgressDto;
-
   caseStudy: {
     id:
       | string
@@ -52,9 +43,6 @@ export type DashboardDataDto = {
     title:
       | string
       | null;
-
-    progress:
-      CaseStudyProgressDto;
 
     /*
      * The current active attempt's baseline
@@ -139,18 +127,14 @@ export const getDashboardData =
   > => {
     const [
       user,
-      courseProgress,
-      caseStudyProgress,
       caseStudy,
       storedCaseStudyProgress,
     ] =
       await Promise.all([
         prisma.user.findUnique({
           where: {
-            id:
-              userId,
+            id: userId,
           },
-
           select: {
             id: true,
             email: true,
@@ -160,55 +144,40 @@ export const getDashboardData =
           },
         }),
 
-        getUserCourseProgress(
-          userId,
-        ),
+        prisma.caseStudy.findUnique({
+          where: {
+            id:
+              CASE_STUDY_ID,
+          },
+          select: {
+            id: true,
+            title: true,
+          },
+        }),
 
-        getCaseStudyProgress(
-          userId,
-        ),
-
-        prisma.caseStudy
-          .findUnique({
-            where: {
-              id:
+        prisma.userCaseStudyProgress.findUnique({
+          where: {
+            userId_caseStudyId: {
+              userId,
+              caseStudyId:
                 CASE_STUDY_ID,
             },
-
-            select: {
-              id: true,
-              title: true,
-            },
-          }),
-
-        prisma
-          .userCaseStudyProgress
-          .findUnique({
-            where: {
-              userId_caseStudyId: {
-                userId,
-
-                caseStudyId:
-                  CASE_STUDY_ID,
+          },
+          select: {
+            activeAttempt: {
+              select: {
+                baselineResult:
+                  true,
               },
             },
-
-            select: {
-              activeAttempt: {
-                select: {
-                  baselineResult:
-                    true,
-                },
-              },
-
-              officialAttempt: {
-                select: {
-                  simulationResult:
-                    true,
-                },
+            officialAttempt: {
+              select: {
+                simulationResult:
+                  true,
               },
             },
-          }),
+          },
+        }),
       ]);
 
     if (!user) {
@@ -236,8 +205,6 @@ export const getDashboardData =
     return {
       user,
 
-      courseProgress,
-
       caseStudy: {
         id:
           caseStudy?.id ??
@@ -246,9 +213,6 @@ export const getDashboardData =
         title:
           caseStudy?.title ??
           null,
-
-        progress:
-          caseStudyProgress,
 
         activeBaselineResult:
           activeBaselineResult

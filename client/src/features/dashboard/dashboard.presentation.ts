@@ -5,6 +5,10 @@ import {
   ROUTES,
 } from "../../constants/routes";
 
+import type {
+  CaseStudyProgress,
+} from "../caseStudy/progress/caseStudyProgress.types";
+
 import {
   getCaseStudyStagePath,
 } from "../caseStudy/progress/caseStudyProgress.presentation";
@@ -20,6 +24,7 @@ import {
 
 import type {
   FinalTestAttempt,
+  UserCourseProgress,
 } from "../course/course.types";
 
 import {
@@ -165,11 +170,16 @@ const createBaselineResultSummary = (
 export const buildDashboardViewModel = (
   data:
     DashboardDataDto,
+
+  courseProgress:
+    UserCourseProgress,
+
+  caseStudyProgress:
+    CaseStudyProgress,
 ): DashboardViewModel => {
 
     const {
           user,
-          courseProgress,
           caseStudy,
         } = data;
 
@@ -199,9 +209,6 @@ export const buildDashboardViewModel = (
                 .isCourseCompleted
               ? "completed"
               : "in-progress";
-
-        const caseStudyProgress =
-          caseStudy.progress;
 
         const caseStudyJourneyStatus =
           caseStudyProgress
