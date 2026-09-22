@@ -10,8 +10,14 @@
     "strict": true,
 
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    "types": ["node"]
   },
 
-  "include": ["src", "prisma"]
+  "include": [
+    "src",
+    "prisma",
+    "prisma.config.ts"
+  ]
 }

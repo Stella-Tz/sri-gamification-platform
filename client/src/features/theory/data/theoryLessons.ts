@@ -365,7 +365,7 @@ export const theoryLessons = [
         id: "reading-the-functionality-level-example",
         type: "text",
         title: "Reading the example",
-        body: "The example shows the different functionality levels defined for the heat emission control service. As the level increases, the implementation of the service becomes smarter. Each level is also associated with individual scores for the impact criteria, representing the expected contribution of that service level to the impacts considered by the SRI. The impact criteria are explained in the next lesson.",
+        body: "In this example, heat emission control progresses from no automatic control at Level 0 to central automatic control at Level 1, individual room control at Level 2, communication with BACS at Level 3, and occupancy detection at Level 4.\n\nThe impact scores do not increase uniformly with every functionality level. For example, Energy efficiency increases from 0 at Level 0 to 3 at Level 4, while Comfort reaches a score of 2 at Level 2 and remains unchanged at the higher levels. Maintenance and fault prediction receives a positive score only from Level 3 onwards, whereas Energy flexibility and storage and Information to occupants remain at 0 across all levels in this example.\n\nThis illustrates that higher functionality levels represent smarter implementations of the same service, but the impact scores do not necessarily increase in the same way across all impact criteria. The impact criteria are explained in the next lesson.",
         sourceRefs: [
           "sri2market-service-catalogue",
           "sri-final-report-2020",
@@ -658,7 +658,7 @@ export const theoryLessons = [
         id: "step-2-select-functionality-levels",
         type: "text",
         title: "Step 2:\u00A0\u00A0Select functionality levels",
-        body: "For each smart-ready service to be assessed, the assessor identifies the corresponding functionality level. This may be determined through inspection, technical documentation, available building information, or other assessment procedures depending on the applicable implementation pathway.\n\nThe following visual shows services within an applicable technical domain being scored according to their selected functionality levels.",
+        body: "For each smart-ready service to be assessed, the assessor identifies the corresponding functionality level. This may be determined through visual inspection or technical documentation.\n\nThe following visual shows services within an applicable technical domain being scored according to their selected functionality levels.",
         sourceRefs: [
           "delegated-regulation-2020-2155",
           "sri-practical-guide-v45",
