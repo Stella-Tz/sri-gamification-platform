@@ -239,6 +239,10 @@ const main = async () => {
         }
       }
     },
+    {
+      maxWait: 10_000,
+      timeout: 120_000,
+    },
   );
 
   console.log(
