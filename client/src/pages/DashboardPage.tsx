@@ -146,7 +146,7 @@ const DashboardPage = () => {
       {dashboard ? (
         <div className="min-w-0">
           <PageHeader
-            title={`Welcome back, ${dashboard.user.firstName} 👋`}
+            title={`Welcome, ${dashboard.user.firstName} 👋`}
           />
 
           <div className="mt-8 min-w-0">
