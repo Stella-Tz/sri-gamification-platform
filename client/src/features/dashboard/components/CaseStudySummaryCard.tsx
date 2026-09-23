@@ -590,8 +590,8 @@ const CaseStudySummaryCard = ({
                   className="
                     grid
                     min-w-0
-                    gap-5
-                    md:grid-cols-[minmax(260px,1fr)_84px_minmax(260px,1fr)]
+                    gap-3
+                    md:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)]
                     md:items-center
                   "
                 >
