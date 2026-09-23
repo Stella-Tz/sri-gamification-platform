@@ -375,7 +375,7 @@ const BaselineResultOverview = ({
         Overall SRI Score
       </p>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,1fr)_104px] items-center gap-7">
+      <div className="mx-auto mt-5 grid w-full max-w-[380px] grid-cols-[minmax(0,1fr)_104px] items-center gap-7">
         <div className="min-w-0 text-center">
           <CompactSriScoreGauge
             score={
@@ -522,22 +522,46 @@ const CaseStudySummaryCard = ({
       summary.baselineResult ? (
         <div className="mx-auto mt-5 w-full max-w-5xl">
           <div
-            className="
-              grid
-              min-w-0
-              gap-8
-              lg:grid-cols-[320px_minmax(0,1fr)]
-              lg:items-start
-              lg:gap-10
-            "
-          >
+              className="
+                grid
+                min-w-0
+                gap-8
+                lg:grid-cols-[320px_minmax(0,1fr)]
+                lg:items-start
+                lg:gap-10
+                xl:grid-cols-1
+                xl:gap-8
+                2xl:grid-cols-[320px_minmax(0,1fr)]
+                2xl:items-start
+                2xl:gap-10
+              "
+            >
             <BaselineResultOverview
               summary={
                 summary.baselineResult
               }
             />
 
-            <section className="min-w-0 border-t border-slate-200 pt-6 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+            <section
+              className="
+                min-w-0
+                border-t
+                border-slate-200
+                pt-6
+                lg:border-l
+                lg:border-t-0
+                lg:pl-10
+                lg:pt-0
+                xl:border-l-0
+                xl:border-t
+                xl:pl-0
+                xl:pt-6
+                2xl:border-l
+                2xl:border-t-0
+                2xl:pl-10
+                2xl:pt-0
+              "
+            >
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">
                 Key Functionalities
               </p>

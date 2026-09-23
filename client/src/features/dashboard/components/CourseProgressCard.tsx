@@ -74,7 +74,7 @@ const CourseProgressCard = ({
         Progress across lessons, learning quizzes and final section tests.
       </p>
 
-      <div className="mt-7 flex flex-col items-center">
+      <div className="mt-7 xl:mt-20 2xl:mt-7 flex flex-col items-center">
         <div ref={chartRef} className="h-40 w-40">
           <CircularProgressbar
             value={animatedValue}
