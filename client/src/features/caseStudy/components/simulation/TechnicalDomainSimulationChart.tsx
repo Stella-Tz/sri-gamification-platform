@@ -167,6 +167,9 @@ const TechnicalDomainSimulationChart = ({
                   }}
                   barGap={8}
                   barCategoryGap="26%"
+                  onMouseDown={(_, event) => {
+                    event.preventDefault();
+                  }}
                 >
                   <CartesianGrid
                     vertical={false}
