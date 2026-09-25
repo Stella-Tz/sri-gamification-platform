@@ -1118,7 +1118,7 @@ const calculateSriResult =
 
           score:
             totalWeight === 0
-              ? 0
+              ? null
               : weightedScore /
                 totalWeight,
         };
