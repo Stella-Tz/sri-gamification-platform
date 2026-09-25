@@ -56,6 +56,9 @@ type DomainTickProps = {
   payload?: {
     value: TechnicalDomainName;
   };
+
+  nonCalculableDomains:
+    ReadonlySet<TechnicalDomainName>;
 };
 
 const TechnicalDomainSimulationChart = ({
@@ -70,12 +73,22 @@ const TechnicalDomainSimulationChart = ({
     );
   }
 
-  const hasNotApplicableScores =
-    chartData.some(
-      (row) =>
-        row.before === null ||
-        row.after === null,
+  const nonCalculableDomains =
+    new Set<TechnicalDomainName>(
+      chartData
+        .filter(
+          (row) =>
+            row.before === null &&
+            row.after === null,
+        )
+        .map(
+          (row) =>
+            row.domain,
+        ),
     );
+
+  const hasNonCalculableScores =
+    nonCalculableDomains.size > 0;
 
   return (
     <section className="min-w-0 max-w-full rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -164,7 +177,13 @@ const TechnicalDomainSimulationChart = ({
                   <XAxis
                     dataKey="domain"
                     interval={0}
-                    tick={<DomainTick />}
+                    tick={
+                      <DomainTick
+                        nonCalculableDomains={
+                          nonCalculableDomains
+                        }
+                      />
+                    }
                     tickLine={false}
                     axisLine={{
                       stroke: "#CBD5E1",
@@ -192,6 +211,8 @@ const TechnicalDomainSimulationChart = ({
                   />
 
                   <Tooltip
+                    shared={true}
+                    filterNull={false}
                     cursor={{
                       fill:
                         "rgba(148, 163, 184, 0.10)",
@@ -212,6 +233,13 @@ const TechnicalDomainSimulationChart = ({
                       0,
                     ]}
                     barSize={32}
+                    minPointSize={(value) =>
+                      typeof value ===
+                        "number" &&
+                      value === 0
+                        ? 3
+                        : 0
+                    }
                     isAnimationActive={false}
                   />
 
@@ -226,6 +254,13 @@ const TechnicalDomainSimulationChart = ({
                       0,
                     ]}
                     barSize={32}
+                    minPointSize={(value) =>
+                      typeof value ===
+                        "number" &&
+                      value === 0
+                        ? 3
+                        : 0
+                    }
                     isAnimationActive={false}
                   />
                 </BarChart>
@@ -247,9 +282,9 @@ const TechnicalDomainSimulationChart = ({
         </p>
       )}
 
-      {hasNotApplicableScores ? (
+      {hasNonCalculableScores ? (
         <p className="mt-4 text-xs font-semibold leading-5 text-slate-500">
-          Domains without a calculable score are shown as not applicable.
+          Domains without a calculable score are marked with —.
         </p>
       ) : null}
     </section>
@@ -376,7 +411,7 @@ const resolveDomainScore = (
 
   for (
     const impactCriterion of
-    sriImpactCriterionNames
+      sriImpactCriterionNames
   ) {
     const matrixCell =
       snapshot.scoreMatrix.find(
@@ -411,7 +446,7 @@ const resolveDomainScore = (
   }
 
   /*
-   * Every domain-impact score is N/A.
+   * Every domain-impact score is non-calculable.
    * The summary fallback value must therefore
    * not be displayed as a genuine score of 0%.
    */
@@ -550,6 +585,7 @@ const DomainTick = ({
   x = 0,
   y = 0,
   payload,
+  nonCalculableDomains,
 }: DomainTickProps) => {
   if (!payload) {
     return null;
@@ -557,10 +593,29 @@ const DomainTick = ({
 
   const domain = payload.value;
 
+  const hasNoCalculableScore =
+    nonCalculableDomains.has(
+      domain,
+    );
+
   return (
     <g
       transform={`translate(${x},${y})`}
     >
+      {hasNoCalculableScore ? (
+        <text
+          x={0}
+          y={-10}
+          textAnchor="middle"
+          fill="#64748B"
+          fontSize={20}
+          fontWeight={800}
+          aria-hidden="true"
+        >
+          —
+        </text>
+      ) : null}
+
       <foreignObject
         x={-55}
         y={10}
@@ -715,7 +770,7 @@ const formatNullableScore = (
   score: number | null,
 ) => {
   if (score === null) {
-    return "Not applicable";
+    return "No calculable score";
   }
 
   return `${score.toFixed(1)}%`;
@@ -725,7 +780,7 @@ const formatNullableDelta = (
   delta: number | null,
 ) => {
   if (delta === null) {
-    return "Not applicable";
+    return "No calculable score";
   }
 
   const sign =
