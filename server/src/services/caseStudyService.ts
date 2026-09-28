@@ -481,7 +481,7 @@ const parseOptionalInteger = (
     : null;
 };
 
-const parseOptionalNumber = (
+const parseFloorArea = (
   value: string,
 ): number | null => {
   const trimmed =
@@ -491,14 +491,43 @@ const parseOptionalNumber = (
     return null;
   }
 
+  /*
+   * Accept either:
+   * 12450
+   * 12,450
+   * 12450.5
+   * 12,450.5
+   */
+  const validFormat =
+    /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(
+      trimmed,
+    );
+
+  if (!validFormat) {
+    return null;
+  }
+
   const numericValue =
-    Number(trimmed);
+    Number(
+      trimmed.replace(/,/g, ""),
+    );
 
   return Number.isFinite(
     numericValue,
   )
     ? numericValue
     : null;
+};
+
+const normalizeFloorAreaInput = (
+  value: string,
+): string => {
+  const parsed =
+    parseFloorArea(value);
+
+  return parsed === null
+    ? value.trim()
+    : String(parsed);
 };
 
 // -----------------------------------------------------------------------------
@@ -584,19 +613,6 @@ const isValidYear = (
   );
 };
 
-const isPositiveNumber = (
-  value: string,
-): boolean => {
-  const numericValue =
-    Number(value);
-
-  return (
-    Number.isFinite(
-      numericValue,
-    ) &&
-    numericValue > 0
-  );
-};
 
 const validateSetupForCompletion =
   async (
@@ -673,6 +689,11 @@ const validateSetupForCompletion =
       mapAssessmentMethodFromInput(
         methodologySelection
           .assessmentMethod,
+      );
+
+    const floorArea =
+      parseFloorArea(
+        buildingInformation.floorArea,
       );
 
     /*
@@ -815,10 +836,8 @@ const validateSetupForCompletion =
         "Enter the total useful floor area.",
       );
     } else if (
-      !isPositiveNumber(
-        buildingInformation
-          .floorArea,
-      )
+      floorArea === null ||
+      floorArea <= 0
     ) {
       addSetupError(
         errors,
@@ -958,10 +977,7 @@ const validateSetupForCompletion =
     }
 
     if (
-      Number(
-        buildingInformation
-          .floorArea,
-      ) !==
+      floorArea !==
       caseStudy.floorArea
     ) {
       addSetupError(
@@ -1948,9 +1964,11 @@ export const saveSetupDraft =
           ),
 
         floorArea:
-          answers
-            .buildingInformation
-            .floorArea,
+          normalizeFloorAreaInput(
+            answers
+              .buildingInformation
+              .floorArea,
+          ),
 
         constructionYear:
           answers
@@ -2106,7 +2124,7 @@ export const saveSetupDraft =
                 null,
 
               floorArea:
-                parseOptionalNumber(
+                parseFloorArea(
                   answers
                     .buildingInformation
                     .floorArea,
@@ -2330,9 +2348,11 @@ export const completeSetup =
           ),
 
         floorArea:
-          answers
-            .buildingInformation
-            .floorArea,
+          normalizeFloorAreaInput(
+            answers
+              .buildingInformation
+              .floorArea,
+          ),
 
         constructionYear:
           answers
@@ -2442,12 +2462,21 @@ export const completeSetup =
           .methodologySelection
           .assessmentMethod,
       );
+    
+    const floorArea =
+      parseFloorArea(
+        answers
+          .buildingInformation
+          .floorArea,
+      );
 
     if (
       !buildingType ||
       !buildingUsage ||
       !buildingState ||
-      !assessmentMethod
+      !assessmentMethod ||
+      floorArea === null ||
+      floorArea <= 0
     ) {
       throw new Error(
         "Validated Setup values could not be resolved.",
@@ -2476,12 +2505,7 @@ export const completeSetup =
               countryId:
                 country.id,
 
-              floorArea:
-                Number(
-                  answers
-                    .buildingInformation
-                    .floorArea,
-                ),
+              floorArea,
 
               constructionYear:
                 Number(

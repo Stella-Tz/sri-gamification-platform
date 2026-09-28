@@ -153,7 +153,7 @@ const DomainsPresenceTable = ({
                   <p
                     id={errorId}
                     role="alert"
-                    className="border-t border-slate-100 px-5 py-2 text-xs font-semibold text-red-600"
+                    className="px-5 py-2 text-xs font-semibold text-red-600"
                   >
                     {error}
                   </p>

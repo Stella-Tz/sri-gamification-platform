@@ -254,7 +254,7 @@ const BuildingInformationForm = ({
               setFloorArea(event.target.value)
             }
             inputMode="decimal"
-            placeholder="e.g. 12500"
+            placeholder="e.g. 12,500"
             className="h-11 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition-colors duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
           />
         </FormRow>
