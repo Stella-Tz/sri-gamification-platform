@@ -10,13 +10,9 @@ import type {
 } from "../caseStudy/progress/caseStudyProgress.types";
 
 import {
+  getCaseStudyProgressPresentation,
   getCaseStudyStagePath,
 } from "../caseStudy/progress/caseStudyProgress.presentation";
-
-import type {
-  CaseStudyJourneyStatus,
-  CaseStudyRouteStage,
-} from "../caseStudy/progress/caseStudyProgress.types";
 
 import {
   getCourseStepPath,
@@ -90,49 +86,6 @@ const getLatestFinalTestAttempt = (
   );
 };
 
-const getCaseStudyStageLabel = ({
-  journeyStatus,
-  lastVisitedStage,
-}: {
-  journeyStatus:
-    CaseStudyJourneyStatus;
-
-  lastVisitedStage:
-    | CaseStudyRouteStage
-    | null;
-}): string => {
-  switch (
-    journeyStatus
-  ) {
-    case "not-started":
-    case "setup-in-progress":
-      return lastVisitedStage ===
-        "assessment"
-        ? "Service Assessment"
-        : "Building Information";
-
-    case "assessment-not-started":
-    case "assessment-in-progress":
-      return "Service Assessment";
-
-    case "results-investigation-not-started":
-    case "results-investigation-in-progress":
-      return "Results Investigation";
-
-    case "improvement-analysis-not-started":
-    case "improvement-analysis-in-progress":
-      return "Guided Improvement Analysis";
-
-    case "simulation-ready":
-      return "Simulation";
-
-    case "completed":
-      return "Simulation Results";
-
-    default:
-      return "Case Study";
-  }
-};
 
 const createBaselineResultSummary = (
   result:
@@ -270,18 +223,11 @@ export const buildDashboardViewModel = (
         }
 
         const currentCaseStudyStepLabel =
-          caseStudyStatus ===
-            "in-progress" ||
-          caseStudyStatus ===
-            "practice-in-progress"
-            ? getCaseStudyStageLabel({
-                journeyStatus:
-                  caseStudyJourneyStatus,
-
-                lastVisitedStage:
-                  caseStudyProgress
-                    .lastVisitedStage,
-              })
+          caseStudyStatus === "in-progress" ||
+          caseStudyStatus === "practice-in-progress"
+            ? getCaseStudyProgressPresentation(
+                caseStudyJourneyStatus,
+              ).stageLabel
             : null;
 
         /*
