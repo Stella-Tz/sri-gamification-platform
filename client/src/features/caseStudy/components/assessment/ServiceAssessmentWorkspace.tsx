@@ -355,10 +355,9 @@ const ServiceAssessmentWorkspace = ({
   return (
     <div className="space-y-6">
       <p className="max-w-6xl text-sm font-medium leading-6 text-slate-500">
-        Only smart-ready services requiring
-        functionality-level assessment for
-        this building are shown.
-        Non-applicable services are excluded.
+        Only smart-ready services identified as applicable for this building scenario 
+        and requiring functionality-level assessment are shown. Non-applicable services 
+        are not presented for user assessment.
       </p>
 
       <ServiceAssessmentHeader
