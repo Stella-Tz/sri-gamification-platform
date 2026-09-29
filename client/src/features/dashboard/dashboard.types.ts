@@ -176,37 +176,15 @@ export type DashboardSimulationResultSummary = {
 
   delta:
     number;
-
-  upgradedServiceCode:
-    string;
-
-  upgradedServiceTitle:
-    string;
 };
 
 export type DashboardCaseStudySummary = {
   state:
     CaseStudySummaryState;
 
-  caseStudyId:
-    | string
-    | null;
-
   caseStudyTitle:
     | string
     | null;
-
-  completedCourseSteps:
-    number;
-
-  totalCourseSteps:
-    number;
-
-  remainingCourseSteps:
-    number;
-
-  courseProgressPercentage:
-    number;
 
   baselineResult:
     | DashboardBaselineResultSummary

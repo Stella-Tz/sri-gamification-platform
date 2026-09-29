@@ -614,28 +614,8 @@ export const buildDashboardViewModel = (
                 delta:
                   officialSimulationResult
                     .sriDelta,
-
-                upgradedServiceCode:
-                  officialSimulationResult
-                    .upgradedService
-                    .serviceCode,
-
-                upgradedServiceTitle:
-                  officialSimulationResult
-                    .upgradedService
-                    .serviceName,
               }
             : null;
-
-        const remainingCourseSteps =
-          Math.max(
-            0,
-
-            courseProgress
-              .totalSteps -
-              courseProgress
-                .completedSteps,
-          );
 
         return {
           user,
@@ -705,36 +685,18 @@ export const buildDashboardViewModel = (
           caseStudySummary: {
             state:
               caseStudySummaryState,
-
-            caseStudyId:
-              caseStudy.id,
-
+          
             caseStudyTitle:
               caseStudy.title,
-
-            completedCourseSteps:
-              courseProgress
-                .completedSteps,
-
-            totalCourseSteps:
-              courseProgress
-                .totalSteps,
-
-            remainingCourseSteps,
-
-            courseProgressPercentage:
-              courseProgress
-                .progressPercentage,
-
+          
             baselineResult:
               baselineResultSummary,
-
+          
             simulationResult:
               simulationResultSummary,
-
+          
             completionAt:
-              caseStudyProgress
-                .officialCompletedAt,
+              caseStudyProgress.officialCompletedAt,
           },
 
           nextAction,
