@@ -1,6 +1,4 @@
 import {
-  BuildingType,
-  ClimateZone,
   DomainPresence,
 } from "@prisma/client";
 
